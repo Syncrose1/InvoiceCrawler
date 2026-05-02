@@ -5,8 +5,6 @@ import { buildJsonSchema, buildSystemPrompt, normaliseExtractedData } from './ai
 import type { EncodedImage } from './image-encoder';
 import { withRetry } from './retry';
 
-const TOOL_NAME = 'record_invoice_fields';
-
 export class AnthropicProvider implements AiProvider {
   private client: Anthropic;
 
@@ -41,14 +39,9 @@ export class AnthropicProvider implements AiProvider {
             model: this.model,
             max_tokens: 1024,
             system: systemPrompt,
-            tools: [
-              {
-                name: TOOL_NAME,
-                description: 'Record the structured invoice fields extracted from the image.',
-                input_schema: schema as Anthropic.Tool.InputSchema,
-              },
-            ],
-            tool_choice: { type: 'tool', name: TOOL_NAME },
+            output_config: {
+              format: { type: 'json_schema', schema: schema as { [key: string]: unknown } },
+            },
             messages: [
               {
                 role: 'user',
@@ -64,11 +57,12 @@ export class AnthropicProvider implements AiProvider {
       { signal: options?.signal },
     );
 
-    const toolUseBlock = response.content.find((b) => b.type === 'tool_use');
-    if (!toolUseBlock || toolUseBlock.type !== 'tool_use') {
-      throw new Error('Anthropic response did not include a tool_use block');
+    const textBlock = response.content.find((b) => b.type === 'text');
+    if (!textBlock || textBlock.type !== 'text') {
+      throw new Error('Anthropic response contained no text block');
     }
 
-    return normaliseExtractedData(toolUseBlock.input as Record<string, unknown>, fields);
+    const parsed = JSON.parse(textBlock.text) as Record<string, unknown>;
+    return normaliseExtractedData(parsed, fields);
   }
 }

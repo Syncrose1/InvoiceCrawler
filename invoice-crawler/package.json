@@ -19,8 +19,8 @@
     "package:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
-    "openai": "^4.70.0",
+    "@anthropic-ai/sdk": "^0.91.1",
+    "openai": "^6.35.0",
     "pdf-to-img": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

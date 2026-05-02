@@ -80,7 +80,7 @@ invoice-crawler/
 
 **IPC**: Every channel is defined once in `src/shared/types.ts`. The `handle<C>()` helper in `main/ipc.ts` and `ipcInvoke<C>()` in the renderer both infer args and return types from the channel name — type safety end-to-end.
 
-**AI providers**: An `AiProvider` interface abstracts over Anthropic and OpenAI. Vision API + structured JSON output means one call per invoice. Multi-page PDFs are sent as multiple images in the same message.
+**AI providers**: An `AiProvider` interface abstracts over Anthropic and OpenAI. Vision API + structured JSON output means one call per invoice. Multi-page PDFs are sent as multiple images in the same message. Anthropic uses `output_config.format` with a JSON schema; OpenAI uses `response_format: json_schema` with `strict: true`.
 
 **Profiles**: Stored as JSON files in the OS app-data directory (`~/.config/invoice-crawler/` on Linux, `%APPDATA%/invoice-crawler/` on Windows, `~/Library/Application Support/invoice-crawler/` on macOS). API keys are encrypted via Electron's `safeStorage` (uses the OS keychain).
 
