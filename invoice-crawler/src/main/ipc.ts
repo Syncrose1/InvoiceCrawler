@@ -2,13 +2,16 @@ import { ipcMain, dialog, BrowserWindow } from 'electron';
 import type { IpcInvokeMap } from '@shared/types';
 import { scanFolder } from './services/file-scanner';
 import {
+  buildDefaultProfile,
   decryptApiKey,
   deleteProfile,
+  encryptApiKey,
   getProfile,
   listProfiles,
   saveProfile,
 } from './services/profile-store';
 import { extractInvoice } from './services/extract-single';
+import { loadSettings, saveSettings } from './services/settings-store';
 
 type GetMainWindow = () => BrowserWindow | null;
 
@@ -51,6 +54,15 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
   handle('profiles:delete', async (profileId) => {
     await deleteProfile(profileId);
   });
+  handle('profiles:create-default', async () => saveProfile(buildDefaultProfile()));
+  handle('profiles:set-api-key', async (profileId, apiKey) => {
+    const profile = await getProfile(profileId);
+    if (!profile) throw new Error(`Profile not found: ${profileId}`);
+    return saveProfile({ ...profile, apiKeyEncrypted: encryptApiKey(apiKey) });
+  });
+
+  handle('settings:get', async () => loadSettings());
+  handle('settings:set', async (patch) => saveSettings(patch));
 
   // Batch processing lands in Phase 4 — stubs for now so the channels exist.
   handle('batch:start', async () => undefined);

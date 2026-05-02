@@ -41,6 +41,11 @@ export interface FolderScanResult {
   files: string[];
 }
 
+export interface AppSettings {
+  activeProfileId: string | null;
+  lastFolderPath: string | null;
+}
+
 export interface IpcInvokeMap {
   'dialog:select-folder': { args: []; return: string | null };
   'dialog:select-save-path': { args: [defaultName: string]; return: string | null };
@@ -48,6 +53,10 @@ export interface IpcInvokeMap {
   'profiles:list': { args: []; return: FirmProfile[] };
   'profiles:save': { args: [profile: FirmProfile]; return: FirmProfile };
   'profiles:delete': { args: [profileId: string]; return: void };
+  'profiles:create-default': { args: []; return: FirmProfile };
+  'profiles:set-api-key': { args: [profileId: string, apiKey: string]; return: FirmProfile };
+  'settings:get': { args: []; return: AppSettings };
+  'settings:set': { args: [patch: Partial<AppSettings>]; return: AppSettings };
   'batch:start': { args: [filePaths: string[], profileId: string]; return: void };
   'batch:cancel': { args: []; return: void };
   'export:csv': {

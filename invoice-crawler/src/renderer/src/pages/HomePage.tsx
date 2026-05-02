@@ -1,19 +1,53 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FolderOpen, Play, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FolderOpen, Play, FileText, Building2, AlertCircle, Settings as SettingsIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import clsx from 'clsx';
 import { ipcInvoke } from '../hooks/useIpc';
+import { useProfiles } from '../hooks/useProfiles';
 
 export default function HomePage() {
+  const { activeProfile, profiles, setActive, loading } = useProfiles();
   const [folderPath, setFolderPath] = useState<string | null>(null);
   const [fileCount, setFileCount] = useState(0);
+  const [scanError, setScanError] = useState<string | null>(null);
+
+  // Hydrate from settings on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const settings = await ipcInvoke('settings:get');
+      if (cancelled || !settings.lastFolderPath) return;
+      try {
+        const result = await ipcInvoke('fs:scan-folder', settings.lastFolderPath);
+        if (cancelled) return;
+        setFolderPath(result.folderPath);
+        setFileCount(result.files.length);
+      } catch {
+        // Folder may have been deleted/moved — silently drop the stale path.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function pickFolder() {
     const path = await ipcInvoke('dialog:select-folder');
     if (!path) return;
-    setFolderPath(path);
-    const result = await ipcInvoke('fs:scan-folder', path);
-    setFileCount(result.files.length);
+    setScanError(null);
+    try {
+      const result = await ipcInvoke('fs:scan-folder', path);
+      setFolderPath(result.folderPath);
+      setFileCount(result.files.length);
+      await ipcInvoke('settings:set', { lastFolderPath: result.folderPath });
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : String(err));
+    }
   }
+
+  const hasApiKey = (activeProfile?.apiKeyEncrypted.length ?? 0) > 0;
+  const canStart = activeProfile && hasApiKey && fileCount > 0;
 
   return (
     <div className="px-12 py-10 max-w-4xl mx-auto">
@@ -28,10 +62,66 @@ export default function HomePage() {
         </p>
       </motion.div>
 
+      {/* Active profile section */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
+        transition={{ duration: 0.3, delay: 0.08 }}
+        className="ice-card frost-overlay p-5 mb-4"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-ice-bg border border-ice-border flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 text-ice-accent" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-ice-text-dim mb-0.5">
+                Active profile
+              </div>
+              {loading ? (
+                <div className="text-sm text-ice-text-dim">Loading…</div>
+              ) : activeProfile ? (
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-medium truncate">{activeProfile.name}</div>
+                  {!hasApiKey && (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-ice-danger">
+                      <AlertCircle className="w-3 h-3" />
+                      missing API key
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-ice-text-muted">No active profile</div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {profiles.length > 1 && (
+              <select
+                value={activeProfile?.id ?? ''}
+                onChange={(e) => setActive(e.target.value || null)}
+                className="ice-input text-sm py-1.5"
+              >
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <Link to="/settings" className="ice-button text-sm flex items-center gap-2">
+              <SettingsIcon className="w-3.5 h-3.5" />
+              <span>{profiles.length === 0 ? 'Create profile' : 'Manage'}</span>
+            </Link>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Folder picker */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.12 }}
         className="ice-card frost-overlay p-7 mb-6"
       >
         <div className="flex items-center justify-between gap-6">
@@ -53,30 +143,53 @@ export default function HomePage() {
           </button>
         </div>
 
-        {folderPath && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            transition={{ duration: 0.2 }}
-            className="mt-5 pt-5 border-t border-ice-border flex items-center gap-2 text-sm text-ice-text-muted"
-          >
-            <FileText className="w-4 h-4" />
-            <span>
-              {fileCount} {fileCount === 1 ? 'file' : 'files'} ready to process
-            </span>
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {folderPath && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mt-5 pt-5 border-t border-ice-border flex items-center gap-2 text-sm text-ice-text-muted"
+            >
+              <FileText className="w-4 h-4" />
+              <span>
+                {fileCount} {fileCount === 1 ? 'file' : 'files'} ready to process
+              </span>
+            </motion.div>
+          )}
+          {scanError && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 text-sm text-ice-danger flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4" />
+              <span>{scanError}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.section>
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.15 }}
-        className="flex justify-end"
+        transition={{ duration: 0.3, delay: 0.16 }}
+        className="flex items-center justify-between"
       >
+        <div className="text-xs text-ice-text-dim">
+          {!activeProfile && 'Create a profile to begin.'}
+          {activeProfile && !hasApiKey && 'Add an API key to your active profile in Settings.'}
+          {activeProfile && hasApiKey && fileCount === 0 && 'Pick a folder containing invoices.'}
+          {canStart && `${fileCount} ${fileCount === 1 ? 'invoice' : 'invoices'} ready.`}
+        </div>
         <button
-          disabled={!folderPath || fileCount === 0}
-          className="ice-button-primary flex items-center gap-2 px-6 py-3"
+          disabled={!canStart}
+          className={clsx(
+            'ice-button-primary flex items-center gap-2 px-6 py-3',
+            canStart && 'animate-pulse-glow',
+          )}
         >
           <Play className="w-4 h-4" />
           <span>Start processing</span>
