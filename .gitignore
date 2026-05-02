@@ -1,0 +1,21 @@
+# Old V1.4 source — kept locally for reference, not in repo
+InvoiceCrawler V1.4 Source/
+InvoiceCrawler V1.4 Source*.rar
+
+# Node / Electron
+node_modules/
+out/
+dist/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Env / secrets
+.env
+.env.local
+*.key
+key.txt

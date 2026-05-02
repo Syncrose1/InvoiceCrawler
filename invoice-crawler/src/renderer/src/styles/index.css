@@ -1,0 +1,71 @@
+@import url('https://rsms.me/inter/inter.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    @apply h-full w-full overflow-hidden;
+  }
+
+  body {
+    @apply bg-ice-bg text-ice-text font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    background-image:
+      radial-gradient(at 20% 10%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 90%, rgba(96, 165, 250, 0.05) 0px, transparent 50%);
+  }
+
+  *::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  *::-webkit-scrollbar-track {
+    @apply bg-ice-bg;
+  }
+  *::-webkit-scrollbar-thumb {
+    @apply bg-ice-border rounded-full;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    @apply bg-ice-border-glow;
+  }
+}
+
+@layer components {
+  .ice-card {
+    @apply bg-ice-surface/60 border border-ice-border rounded-xl backdrop-blur-ice shadow-inner-ice;
+  }
+
+  .ice-card-hover {
+    @apply transition-all duration-200 hover:border-ice-border-glow hover:shadow-glow-sm;
+  }
+
+  .ice-button {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
+           bg-ice-surface border border-ice-border text-ice-text
+           hover:border-ice-border-glow hover:bg-ice-surface-2
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .ice-button-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
+           bg-ice-accent-soft border border-ice-accent/40 text-ice-text
+           hover:bg-ice-accent/20 hover:border-ice-accent hover:shadow-glow-sm
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .ice-input {
+    @apply px-3 py-2 rounded-lg bg-ice-bg border border-ice-border text-ice-text
+           placeholder:text-ice-text-dim
+           focus:outline-none focus:border-ice-accent focus:shadow-glow-sm
+           transition-all duration-150;
+  }
+
+  .frost-overlay {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    );
+  }
+}
