@@ -46,10 +46,10 @@ export default function ProcessingPage() {
       >
         <div className="flex items-baseline justify-between mb-2">
           <h1 className="text-2xl font-semibold tracking-tight">
-            {batch.phase === 'running' && 'Processing invoices'}
-            {batch.phase === 'complete' && 'Processing complete'}
-            {batch.phase === 'cancelled' && 'Cancelled'}
-            {batch.phase === 'error' && 'Processing failed'}
+            {batch.phase === 'running' && 'Crawling through your invoices…'}
+            {batch.phase === 'complete' && 'All done.'}
+            {batch.phase === 'cancelled' && 'Stopped.'}
+            {batch.phase === 'error' && 'Something went wrong.'}
           </h1>
           <div className="text-sm text-ice-text-muted tabular-nums">
             {completed} / {total}
@@ -57,8 +57,9 @@ export default function ProcessingPage() {
         </div>
         <div className="text-xs text-ice-text-dim h-4 truncate">
           {batch.phase === 'running' && currentFile && `Reading ${currentFile}…`}
-          {batch.phase === 'complete' && `${counts.success} succeeded · ${counts.error} failed`}
-          {batch.phase === 'cancelled' && 'Batch was cancelled.'}
+          {batch.phase === 'complete' &&
+            `${counts.success} sorted${counts.error > 0 ? ` · ${counts.error} need a second look` : ''}`}
+          {batch.phase === 'cancelled' && 'No worries — pick up where you left off whenever.'}
           {batch.phase === 'error' && (batch.error ?? 'Unknown error')}
         </div>
       </motion.div>
@@ -125,10 +126,10 @@ export default function ProcessingPage() {
         className="mt-6 flex items-center justify-between"
       >
         <div className="text-xs text-ice-text-dim">
-          {batch.phase === 'running' && 'Processing in the background. You can cancel anytime.'}
-          {batch.phase === 'complete' && 'Heading to results…'}
-          {batch.phase === 'cancelled' && 'You can review what completed before cancellation.'}
-          {batch.phase === 'error' && 'Something went wrong. Check the message above.'}
+          {batch.phase === 'running' && 'Working away in the background. Cancel anytime if you change your mind.'}
+          {batch.phase === 'complete' && 'Off to the results page…'}
+          {batch.phase === 'cancelled' && 'Have a look at what we managed to finish.'}
+          {batch.phase === 'error' && 'Have a peek at the message above to see what happened.'}
         </div>
         <div className="flex gap-2">
           {batch.phase === 'running' && (

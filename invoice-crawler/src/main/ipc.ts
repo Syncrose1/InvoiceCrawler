@@ -13,6 +13,7 @@ import {
 import { extractInvoice } from './services/extract-single';
 import { loadSettings, saveSettings } from './services/settings-store';
 import { BatchProcessor } from './services/batch-processor';
+import { exportCsv } from './services/csv-exporter';
 
 type GetMainWindow = () => BrowserWindow | null;
 
@@ -109,8 +110,9 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
     batchProcessor.cancel();
   });
 
-  // CSV export lands in Phase 5.
-  handle('export:csv', async () => undefined);
+  handle('export:csv', async (results, fields, outputPath) => {
+    await exportCsv(results, fields, outputPath);
+  });
 
   handle('reprocess:single', async (filePath, profileId) => {
     const profile = await getProfile(profileId);

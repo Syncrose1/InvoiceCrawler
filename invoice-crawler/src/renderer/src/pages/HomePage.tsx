@@ -77,9 +77,12 @@ export default function HomePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.05 }}
       >
-        <h1 className="text-3xl font-semibold tracking-tight mb-1">Process invoices</h1>
+        <h1 className="text-3xl font-semibold tracking-tight mb-1">
+          Welcome back <span className="text-ice-accent">·</span>
+        </h1>
         <p className="text-ice-text-muted text-sm mb-10">
-          Select a folder of invoice images or PDFs to extract structured data.
+          Point us at a folder of invoices and we'll extract the bits you care about.
+          PDFs, scans, photos — whatever you've got.
         </p>
       </motion.div>
 
@@ -200,10 +203,11 @@ export default function HomePage() {
         className="flex items-center justify-between"
       >
         <div className="text-xs text-ice-text-dim">
-          {!activeProfile && 'Create a profile to begin.'}
-          {activeProfile && !hasApiKey && 'Add an API key to your active profile in Settings.'}
+          {!activeProfile && 'Pop over to Settings to create your first profile.'}
+          {activeProfile && !hasApiKey && 'Almost there — just need an API key in Settings.'}
           {activeProfile && hasApiKey && fileCount === 0 && 'Pick a folder containing invoices.'}
-          {canStart && `${fileCount} ${fileCount === 1 ? 'invoice' : 'invoices'} ready.`}
+          {canStart &&
+            `${fileCount} ${fileCount === 1 ? 'invoice' : 'invoices'} ready when you are.`}
         </div>
         <button
           onClick={handleStart}

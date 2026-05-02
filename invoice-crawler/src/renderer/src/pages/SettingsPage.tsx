@@ -40,9 +40,10 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.05 }}
       >
-        <h1 className="text-3xl font-semibold tracking-tight mb-1">Firm profiles</h1>
+        <h1 className="text-3xl font-semibold tracking-tight mb-1">Your firms</h1>
         <p className="text-ice-text-muted text-sm mb-10">
-          Each profile saves a firm's AI provider, model, API key, and extraction fields.
+          One profile per firm. Each saves its own AI provider, model, API key, and the fields
+          you want pulled from invoices.
         </p>
       </motion.div>
 
@@ -58,7 +59,7 @@ export default function SettingsPage() {
           )}
           {!loading && profiles.length === 0 && (
             <div className="ice-card p-4 text-sm text-ice-text-muted">
-              No profiles yet. Create one to get started.
+              No profiles yet — give it a click below to create your first one.
             </div>
           )}
           {profiles.map((profile) => (
@@ -97,7 +98,7 @@ export default function SettingsPage() {
               exit={{ opacity: 0 }}
               className="ice-card frost-overlay p-10 text-sm text-ice-text-muted text-center"
             >
-              Select a profile to edit, or create a new one.
+              Pick a profile on the left to edit, or spin up a new one.
             </motion.div>
           )}
         </AnimatePresence>
@@ -309,7 +310,8 @@ function ProfileEditor({
           </button>
         </div>
         <p className="text-[11px] text-ice-text-dim mt-2">
-          Stored in your OS keychain via Electron's safeStorage. Never sent anywhere except the AI provider.
+          Tucked safely in your OS keychain via Electron's safeStorage. We never send it anywhere
+          except the AI provider you've chosen.
         </p>
       </div>
 

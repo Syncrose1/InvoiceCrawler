@@ -1,10 +1,10 @@
 {
   "name": "invoice-crawler",
   "version": "2.0.0",
-  "description": "AI-powered invoice data extraction for accountancy firms",
+  "description": "AI-powered invoice data extraction for accountancy firms — by Syncratic",
   "main": "./out/main/index.js",
   "type": "module",
-  "author": "Syncrose1",
+  "author": "Syncratic",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",

@@ -37,21 +37,23 @@
   }
 
   .ice-card-hover {
-    @apply transition-all duration-200 hover:border-ice-border-glow hover:shadow-glow-sm;
+    @apply transition-all duration-200 hover:border-ice-border-glow hover:shadow-glow-sm hover:-translate-y-0.5;
   }
 
   .ice-button {
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
            bg-ice-surface border border-ice-border text-ice-text
-           hover:border-ice-border-glow hover:bg-ice-surface-2
-           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+           hover:border-ice-border-glow hover:bg-ice-surface-2 hover:-translate-y-px hover:shadow-glow-sm
+           active:scale-[0.98] active:translate-y-0
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none;
   }
 
   .ice-button-primary {
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
            bg-ice-accent-soft border border-ice-accent/40 text-ice-text
-           hover:bg-ice-accent/20 hover:border-ice-accent hover:shadow-glow-sm
-           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+           hover:bg-ice-accent/20 hover:border-ice-accent hover:shadow-glow-md hover:-translate-y-px
+           active:scale-[0.98] active:translate-y-0
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none;
   }
 
   .ice-input {

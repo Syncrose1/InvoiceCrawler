@@ -108,3 +108,21 @@ export async function cancelBatch(): Promise<void> {
 export function resetBatch(): void {
   set(initialState);
 }
+
+export function updateResult(filePath: string, patch: Partial<InvoiceResult>): void {
+  if (!state.results && !state.progress) return;
+  const apply = (results: InvoiceResult[]): InvoiceResult[] =>
+    results.map((r) => (r.filePath === filePath ? { ...r, ...patch } : r));
+  set({
+    ...state,
+    results: state.results ? apply(state.results) : null,
+    progress: state.progress ? { ...state.progress, results: apply(state.progress.results) } : null,
+  });
+}
+
+export async function reprocessSingle(filePath: string, profileId: string): Promise<InvoiceResult> {
+  updateResult(filePath, { status: 'processing', error: undefined });
+  const result = await ipcInvoke('reprocess:single', filePath, profileId);
+  updateResult(filePath, result);
+  return result;
+}

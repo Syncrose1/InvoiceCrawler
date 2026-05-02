@@ -1,5 +1,7 @@
 # Invoice Crawler
 
+> A [Syncratic](https://github.com/Syncrose1) product.
+
 AI-powered invoice data extraction for accountancy firms. Drop a folder of invoice images or PDFs, get a clean CSV of structured data — dates, totals, VAT, company names, and any other fields you configure.
 
 Built with TypeScript, Electron, and modern vision APIs (Anthropic Claude or OpenAI).
@@ -112,3 +114,8 @@ Phase 1 (scaffold) is complete. See commit history for progress on subsequent ph
 ## License
 
 MIT
+
+---
+
+Kind Regards,
+Syncratic.

@@ -1,4 +1,4 @@
-appId: com.invoicecrawler.app
+appId: com.syncratic.invoicecrawler
 productName: Invoice Crawler
 directories:
   buildResources: resources

@@ -34,11 +34,11 @@ function NoProfile() {
     <div className="px-12 py-10 max-w-5xl mx-auto">
       <h1 className="text-3xl font-semibold tracking-tight mb-1">Extraction fields</h1>
       <p className="text-ice-text-muted text-sm mb-10">
-        Create or select an active profile in Settings before editing fields.
+        Pick an active profile in Settings first, then come back to choose what to extract.
       </p>
       <div className="ice-card frost-overlay p-10 text-center">
         <AlertCircle className="w-8 h-8 text-ice-text-dim mx-auto mb-3" />
-        <div className="text-sm text-ice-text-muted">No active profile.</div>
+        <div className="text-sm text-ice-text-muted">No active profile selected.</div>
       </div>
     </div>
   );
@@ -122,8 +122,9 @@ function FieldEditor({
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">Extraction fields</h1>
           <p className="text-ice-text-muted text-sm">
-            Editing fields for{' '}
-            <span className="text-ice-text font-medium">{profile.name}</span>. Drag to reorder.
+            Tell us what to look for in invoices for{' '}
+            <span className="text-ice-text font-medium">{profile.name}</span>. Grab and drag to
+            reorder.
           </p>
         </div>
         <div className="flex items-center gap-2">
