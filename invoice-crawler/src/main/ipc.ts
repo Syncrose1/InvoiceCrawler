@@ -1,5 +1,14 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import type { IpcInvokeMap } from '@shared/types';
+import { scanFolder } from './services/file-scanner';
+import {
+  decryptApiKey,
+  deleteProfile,
+  getProfile,
+  listProfiles,
+  saveProfile,
+} from './services/profile-store';
+import { extractInvoice } from './services/extract-single';
 
 type GetMainWindow = () => BrowserWindow | null;
 
@@ -35,18 +44,42 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
     return result.filePath;
   });
 
-  // Stub handlers — real implementations land in later phases.
-  handle('fs:scan-folder', async (folderPath) => ({ folderPath, files: [] }));
-  handle('profiles:list', async () => []);
-  handle('profiles:save', async (profile) => profile);
-  handle('profiles:delete', async () => undefined);
+  handle('fs:scan-folder', async (folderPath) => scanFolder(folderPath));
+
+  handle('profiles:list', async () => listProfiles());
+  handle('profiles:save', async (profile) => saveProfile(profile));
+  handle('profiles:delete', async (profileId) => {
+    await deleteProfile(profileId);
+  });
+
+  // Batch processing lands in Phase 4 — stubs for now so the channels exist.
   handle('batch:start', async () => undefined);
   handle('batch:cancel', async () => undefined);
+
+  // CSV export lands in Phase 5.
   handle('export:csv', async () => undefined);
-  handle('reprocess:single', async (filePath) => ({
-    fileName: filePath,
-    filePath,
-    status: 'success',
-    data: {},
-  }));
+
+  handle('reprocess:single', async (filePath, profileId) => {
+    const profile = await getProfile(profileId);
+    if (!profile) {
+      return {
+        fileName: filePath,
+        filePath,
+        status: 'error',
+        data: {},
+        error: `Profile not found: ${profileId}`,
+      };
+    }
+    const apiKey = decryptApiKey(profile.apiKeyEncrypted);
+    if (!apiKey) {
+      return {
+        fileName: filePath,
+        filePath,
+        status: 'error',
+        data: {},
+        error: 'No API key configured for this profile',
+      };
+    }
+    return extractInvoice(filePath, profile, apiKey);
+  });
 }

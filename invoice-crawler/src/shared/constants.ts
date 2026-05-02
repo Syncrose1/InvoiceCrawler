@@ -62,3 +62,8 @@ export const PROVIDER_LABELS: Record<AiProviderName, string> = {
 };
 
 export const MISSING_VALUE = '-';
+
+export const DEFAULT_OUTPUT_FILENAME = 'output.csv';
+
+export const DEFAULT_PROFILE_NAME = 'Default Profile';
+

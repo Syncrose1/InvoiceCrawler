@@ -1,6 +1,7 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, Settings, Sliders, Snowflake } from 'lucide-react';
+import { Home, Settings, Sliders } from 'lucide-react';
+import SpiderIcon from './components/SpiderIcon';
 import HomePage from './pages/HomePage';
 import SettingsPage from './pages/SettingsPage';
 import FieldEditorPage from './pages/FieldEditorPage';
@@ -44,7 +45,7 @@ function Sidebar() {
     <aside className="w-60 border-r border-ice-border bg-ice-surface/40 backdrop-blur-ice flex flex-col">
       <div className="px-5 py-6 flex items-center gap-3 border-b border-ice-border">
         <div className="w-9 h-9 rounded-lg bg-ice-accent-soft border border-ice-accent/40 flex items-center justify-center shadow-glow-sm">
-          <Snowflake className="w-5 h-5 text-ice-accent" />
+          <SpiderIcon className="w-5 h-5 text-ice-accent" />
         </div>
         <div>
           <div className="text-sm font-semibold tracking-tight">Invoice Crawler</div>
