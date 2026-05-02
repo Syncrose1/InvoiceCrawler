@@ -12,6 +12,7 @@ import {
 } from './services/profile-store';
 import { extractInvoice } from './services/extract-single';
 import { loadSettings, saveSettings } from './services/settings-store';
+import { BatchProcessor } from './services/batch-processor';
 
 type GetMainWindow = () => BrowserWindow | null;
 
@@ -23,7 +24,18 @@ function handle<C extends keyof IpcInvokeMap>(channel: C, fn: Handler<C>): void 
   ipcMain.handle(channel, async (_event, ...args) => fn(...(args as IpcInvokeMap[C]['args'])));
 }
 
+const batchProcessor = new BatchProcessor();
+
 export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
+  function emit<C extends keyof import('@shared/types').IpcEventMap>(
+    channel: C,
+    payload: import('@shared/types').IpcEventMap[C],
+  ): void {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(channel, payload);
+  }
+
   handle('dialog:select-folder', async () => {
     const win = getMainWindow();
     if (!win) return null;
@@ -64,9 +76,38 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
   handle('settings:get', async () => loadSettings());
   handle('settings:set', async (patch) => saveSettings(patch));
 
-  // Batch processing lands in Phase 4 — stubs for now so the channels exist.
-  handle('batch:start', async () => undefined);
-  handle('batch:cancel', async () => undefined);
+  handle('batch:start', async (filePaths, profileId) => {
+    const profile = await getProfile(profileId);
+    if (!profile) {
+      emit('batch:error', `Profile not found: ${profileId}`);
+      return;
+    }
+    const apiKey = decryptApiKey(profile.apiKeyEncrypted);
+    if (!apiKey) {
+      emit('batch:error', 'No API key configured for this profile');
+      return;
+    }
+
+    // Run in the background so the IPC call returns immediately;
+    // progress and completion are pushed via events.
+    void (async () => {
+      try {
+        const results = await batchProcessor.run({
+          filePaths,
+          profile,
+          apiKey,
+          onProgress: (progress) => emit('batch:progress', progress),
+        });
+        emit('batch:complete', results);
+      } catch (error) {
+        emit('batch:error', error instanceof Error ? error.message : String(error));
+      }
+    })();
+  });
+
+  handle('batch:cancel', async () => {
+    batchProcessor.cancel();
+  });
 
   // CSV export lands in Phase 5.
   handle('export:csv', async () => undefined);

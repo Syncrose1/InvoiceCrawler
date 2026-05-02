@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, Play, FileText, Building2, AlertCircle, Settings as SettingsIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { ipcInvoke } from '../hooks/useIpc';
 import { useProfiles } from '../hooks/useProfiles';
+import { startBatch } from '../hooks/useBatch';
 
 export default function HomePage() {
   const { activeProfile, profiles, setActive, loading } = useProfiles();
+  const navigate = useNavigate();
   const [folderPath, setFolderPath] = useState<string | null>(null);
   const [fileCount, setFileCount] = useState(0);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
   // Hydrate from settings on mount.
   useEffect(() => {
@@ -47,7 +50,25 @@ export default function HomePage() {
   }
 
   const hasApiKey = (activeProfile?.apiKeyEncrypted.length ?? 0) > 0;
-  const canStart = activeProfile && hasApiKey && fileCount > 0;
+  const canStart = !!activeProfile && hasApiKey && fileCount > 0 && !starting;
+
+  async function handleStart() {
+    if (!activeProfile || !folderPath) return;
+    setStarting(true);
+    try {
+      const scan = await ipcInvoke('fs:scan-folder', folderPath);
+      if (scan.files.length === 0) {
+        setScanError('No supported files found in this folder.');
+        return;
+      }
+      await startBatch(scan.files, activeProfile.id);
+      navigate('/processing');
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setStarting(false);
+    }
+  }
 
   return (
     <div className="px-12 py-10 max-w-4xl mx-auto">
@@ -185,6 +206,7 @@ export default function HomePage() {
           {canStart && `${fileCount} ${fileCount === 1 ? 'invoice' : 'invoices'} ready.`}
         </div>
         <button
+          onClick={handleStart}
           disabled={!canStart}
           className={clsx(
             'ice-button-primary flex items-center gap-2 px-6 py-3',
@@ -192,7 +214,7 @@ export default function HomePage() {
           )}
         >
           <Play className="w-4 h-4" />
-          <span>Start processing</span>
+          <span>{starting ? 'Starting…' : 'Start processing'}</span>
         </button>
       </motion.div>
     </div>
