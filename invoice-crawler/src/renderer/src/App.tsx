@@ -2,6 +2,8 @@ import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Home, Settings, Sliders } from 'lucide-react';
 import SpiderIcon from './components/SpiderIcon';
+import ErrorBoundary from './components/ErrorBoundary';
+import UpdateBanner from './components/UpdateBanner';
 import HomePage from './pages/HomePage';
 import SettingsPage from './pages/SettingsPage';
 import FieldEditorPage from './pages/FieldEditorPage';
@@ -26,16 +28,19 @@ export default function App() {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="h-full"
           >
-            <Routes location={location}>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/fields" element={<FieldEditorPage />} />
-              <Route path="/processing" element={<ProcessingPage />} />
-              <Route path="/results" element={<ResultsPage />} />
-            </Routes>
+            <ErrorBoundary>
+              <Routes location={location}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/fields" element={<FieldEditorPage />} />
+                <Route path="/processing" element={<ProcessingPage />} />
+                <Route path="/results" element={<ResultsPage />} />
+              </Routes>
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </main>
+      <UpdateBanner />
     </div>
   );
 }

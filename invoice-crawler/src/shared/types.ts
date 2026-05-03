@@ -46,6 +46,14 @@ export interface AppSettings {
   lastFolderPath: string | null;
 }
 
+export type UpdateStatus =
+  | { phase: 'idle' }
+  | { phase: 'checking' }
+  | { phase: 'available'; version: string }
+  | { phase: 'downloading'; percent: number }
+  | { phase: 'ready'; version: string }
+  | { phase: 'error'; message: string };
+
 export interface IpcInvokeMap {
   'dialog:select-folder': { args: []; return: string | null };
   'dialog:select-save-path': { args: [defaultName: string]; return: string | null };
@@ -57,6 +65,8 @@ export interface IpcInvokeMap {
   'profiles:set-api-key': { args: [profileId: string, apiKey: string]; return: FirmProfile };
   'settings:get': { args: []; return: AppSettings };
   'settings:set': { args: [patch: Partial<AppSettings>]; return: AppSettings };
+  'update:download': { args: []; return: void };
+  'update:install': { args: []; return: void };
   'batch:start': { args: [filePaths: string[], profileId: string]; return: void };
   'batch:cancel': { args: []; return: void };
   'export:csv': {
@@ -73,6 +83,7 @@ export type IpcEventMap = {
   'batch:progress': BatchProgress;
   'batch:complete': InvoiceResult[];
   'batch:error': string;
+  'update:status': UpdateStatus;
 };
 
 export type IpcChannel = keyof IpcInvokeMap;

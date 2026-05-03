@@ -14,6 +14,7 @@ import { extractInvoice } from './services/extract-single';
 import { loadSettings, saveSettings } from './services/settings-store';
 import { BatchProcessor } from './services/batch-processor';
 import { exportCsv } from './services/csv-exporter';
+import { downloadUpdate, quitAndInstall } from './services/updater';
 
 type GetMainWindow = () => BrowserWindow | null;
 
@@ -76,6 +77,13 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
 
   handle('settings:get', async () => loadSettings());
   handle('settings:set', async (patch) => saveSettings(patch));
+
+  handle('update:download', async () => {
+    await downloadUpdate();
+  });
+  handle('update:install', async () => {
+    quitAndInstall();
+  });
 
   handle('batch:start', async (filePaths, profileId) => {
     const profile = await getProfile(profileId);

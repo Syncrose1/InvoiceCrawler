@@ -142,6 +142,20 @@ function FieldEditor({
         </div>
       </motion.div>
 
+      {fields.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="ice-card frost-overlay p-8 text-center mb-3"
+        >
+          <div className="text-sm text-ice-text-muted mb-1">No fields yet.</div>
+          <div className="text-xs text-ice-text-dim">
+            Add one below, or hit "Reset to defaults" for the usual suspects (date, total,
+            VAT, and friends).
+          </div>
+        </motion.div>
+      )}
+
       <div className="space-y-3">
         <AnimatePresence initial={false}>
           {fields.map((field, index) => (

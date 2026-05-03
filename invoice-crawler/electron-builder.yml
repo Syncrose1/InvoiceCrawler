@@ -1,7 +1,7 @@
 appId: com.syncratic.invoicecrawler
 productName: Invoice Crawler
 directories:
-  buildResources: resources
+  buildResources: build
   output: dist
 files:
   - '!**/.vscode/*'
@@ -9,17 +9,19 @@ files:
   - '!electron.vite.config.ts'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!{.eslintrc.cjs,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
-asarUnpack:
-  - resources/**
+  - '!build/icon.svg'
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch: [x64]
 mac:
+  icon: build/icon.png
   target:
     - target: dmg
       arch: [x64, arm64]
 linux:
+  icon: build/icon.png
   target:
     - AppImage
   category: Office
@@ -28,3 +30,8 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+publish:
+  provider: github
+  owner: Syncrose1
+  repo: InvoiceCrawler
+  releaseType: release

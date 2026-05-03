@@ -20,15 +20,16 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
+    "@tanstack/react-table": "^8.20.0",
+    "clsx": "^2.1.1",
+    "electron-updater": "^6.8.3",
+    "framer-motion": "^11.15.0",
+    "lucide-react": "^0.469.0",
     "openai": "^6.35.0",
     "pdf-to-img": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.0.0",
-    "@tanstack/react-table": "^8.20.0",
-    "framer-motion": "^11.15.0",
-    "lucide-react": "^0.469.0",
-    "clsx": "^2.1.1"
+    "react-router-dom": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
