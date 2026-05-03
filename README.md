@@ -39,7 +39,7 @@ npm run dev
 
 The Electron window will open automatically. Hot-reload is enabled for the renderer; main process changes require restarting `npm run dev`.
 
-## Build a distributable
+## Build a distributable locally
 
 ```bash
 # All platforms (uses your current OS)
@@ -52,6 +52,42 @@ npm run package:linux
 ```
 
 Built installers land in `invoice-crawler/dist/`.
+
+## Releasing a new version
+
+Releases are built and published automatically by GitHub Actions when you push a `v*` tag.
+
+```bash
+# 1. Bump the version in invoice-crawler/package.json (semver — e.g. 2.0.0 -> 2.0.1)
+# 2. Commit and push
+git add invoice-crawler/package.json
+git commit -m "Release v2.0.1"
+git push
+
+# 3. Tag and push the tag
+git tag v2.0.1
+git push --tags
+```
+
+That tag push triggers `.github/workflows/release.yml`, which:
+
+1. Builds the app on `ubuntu-latest`, `macos-latest`, and `windows-latest` in parallel
+2. Each runner uploads its installer (`.AppImage`, `.dmg`, `.exe`) and the matching `electron-updater` metadata file (`latest-linux.yml`, `latest-mac.yml`, `latest.yml`) to a **draft** GitHub Release named after the tag
+3. Once all three OSes succeed, a final job promotes the draft to a public release
+4. Existing installs running an older version pick up the update within ~4 hours via electron-updater (or on next launch)
+
+A guard step also fails fast if the tag and `package.json` version don't match — no half-misnumbered releases.
+
+> The `GITHUB_TOKEN` provided to workflows is sufficient — no Personal Access Token needed.
+
+### macOS caveat
+
+macOS builds are currently **unsigned and un-notarized**. Two things to know:
+
+1. **First launch will trigger Gatekeeper** — the user has to right-click → Open the first time, or run `xattr -cr "/Applications/Invoice Crawler.app"` after installing.
+2. **Auto-updates won't apply on macOS** until the app is signed with an Apple Developer ID certificate (~£75/yr from Apple). electron-updater silently fails to swap an unsigned app in place. Mac users will need to manually download new versions from GitHub Releases. Linux (AppImage) and Windows (NSIS) auto-updates work fine without signing.
+
+When ready to sign for macOS, add an `Apple Developer ID Application` certificate to GitHub Actions secrets (`CSC_LINK` + `CSC_KEY_PASSWORD`) and notarisation creds (`APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`). electron-builder picks them up automatically.
 
 ## Project structure
 

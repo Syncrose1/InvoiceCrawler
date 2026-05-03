@@ -6,6 +6,7 @@
   "type": "module",
   "author": "Syncratic",
   "license": "MIT",
+  "//": "package:* scripts MUST end with `electron-builder` so that `npm run package:linux -- --publish always` forwards --publish to electron-builder (npm appends trailing args to the whole script string, which the shell then routes to the last command after &&). If you reorder these, --publish silently goes to the wrong tool.",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

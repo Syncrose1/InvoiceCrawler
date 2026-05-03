@@ -34,4 +34,9 @@ publish:
   provider: github
   owner: Syncrose1
   repo: InvoiceCrawler
-  releaseType: release
+  # The release workflow builds across three OSes in parallel. Using `draft`
+  # means the first runner creates the draft, the others append to it safely,
+  # and a final `publish` job promotes the draft to a real release once all
+  # three OSes have uploaded successfully — no half-published releases if one
+  # platform fails.
+  releaseType: draft

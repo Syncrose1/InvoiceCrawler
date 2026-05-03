@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Manual trigger lets you re-run a release build without re-tagging.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    defaults:
+      run:
+        working-directory: invoice-crawler
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: invoice-crawler/package-lock.json
+
+      # canvas (transitive via pdf-to-img) needs Cairo/Pango on Linux runners.
+      # Mac and Windows runners ship prebuilt canvas binaries, so they don't need this.
+      - name: Install canvas system deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Confirm tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version=$(node -p "require('./package.json').version")
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not match package.json version '$pkg_version'."
+            echo "Bump package.json to $tag_version (or retag to v$pkg_version) and push again."
+            exit 1
+          fi
+
+      # electron-builder reads GH_TOKEN to publish to the GitHub Release matching the tag.
+      # The built-in GITHUB_TOKEN works for releases on the same repo — no PAT needed.
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            npm run package:linux -- --publish always
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            npm run package:mac -- --publish always
+          else
+            npm run package:win -- --publish always
+          fi
+        shell: bash
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      # The build matrix uploads artefacts to a draft release named after the tag.
+      # This step flips the draft to a published release once all three OSes succeed.
+      - name: Promote draft to published release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${GITHUB_REF_NAME}" --draft=false --repo "${GITHUB_REPOSITORY}"
