@@ -28,6 +28,13 @@ jobs:
       - name: Install canvas system deps
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
+      # Pin Python to 3.11 — node-gyp's gyp_main.py imports `distutils`,
+      # removed from 3.12's stdlib.
+      - name: Set up Python (for node-gyp)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install dependencies
         run: npm ci
 

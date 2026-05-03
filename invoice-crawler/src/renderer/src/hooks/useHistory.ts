@@ -78,8 +78,7 @@ export function useHistoryRun(runId: string | undefined): {
   const updateResult = useCallback(
     async (filePath: string, patch: Partial<InvoiceResult>) => {
       if (!record) return;
-      const target = record.results.find((r) => r.filePath === filePath);
-      if (!target) return;
+      if (!record.results.some((r) => r.filePath === filePath)) return;
       const nextResults = record.results.map((r) =>
         r.filePath === filePath ? { ...r, ...patch } : r,
       );

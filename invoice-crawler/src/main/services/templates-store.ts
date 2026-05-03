@@ -11,30 +11,36 @@ function dir(): string {
   return join(app.getPath('userData'), TEMPLATES_DIR);
 }
 
+function pathFor(id: string): string {
+  return join(dir(), `${id}.json`);
+}
+
 async function ensureDir(): Promise<void> {
   await fs.mkdir(dir(), { recursive: true });
+}
+
+async function readJson<T>(filePath: string): Promise<T | null> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(raw) as T;
+  } catch {
+    // Skip corrupt files rather than crashing the page.
+    return null;
+  }
 }
 
 export async function listTemplates(): Promise<FieldTemplate[]> {
   await ensureDir();
   const entries = await fs.readdir(dir());
-  const templates: FieldTemplate[] = [];
-  for (const entry of entries) {
-    if (!entry.endsWith('.json')) continue;
-    try {
-      const raw = await fs.readFile(join(dir(), entry), 'utf-8');
-      templates.push(JSON.parse(raw) as FieldTemplate);
-    } catch {
-      // Skip corrupt files rather than crashing the Templates page.
-    }
-  }
+  const jsonFiles = entries.filter((e) => e.endsWith('.json'));
+  const loaded = await Promise.all(jsonFiles.map((e) => readJson<FieldTemplate>(join(dir(), e))));
+  const templates = loaded.filter((t): t is FieldTemplate => t !== null);
   templates.sort((a, b) => a.name.localeCompare(b.name));
   return templates;
 }
 
 export async function getTemplate(templateId: string): Promise<FieldTemplate | null> {
-  const all = await listTemplates();
-  return all.find((t) => t.id === templateId) ?? null;
+  return readJson<FieldTemplate>(pathFor(templateId));
 }
 
 export async function saveTemplate(template: FieldTemplate): Promise<FieldTemplate> {
@@ -46,15 +52,13 @@ export async function saveTemplate(template: FieldTemplate): Promise<FieldTempla
     createdAt: template.createdAt || now,
     updatedAt: now,
   };
-  const filePath = join(dir(), `${final.id}.json`);
-  await fs.writeFile(filePath, JSON.stringify(final, null, 2), 'utf-8');
+  await fs.writeFile(pathFor(final.id), JSON.stringify(final, null, 2), 'utf-8');
   return final;
 }
 
 export async function deleteTemplate(templateId: string): Promise<void> {
-  const filePath = join(dir(), `${templateId}.json`);
   try {
-    await fs.unlink(filePath);
+    await fs.unlink(pathFor(templateId));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }

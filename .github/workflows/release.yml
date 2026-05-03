@@ -39,6 +39,16 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
+      # node-gyp's bundled gyp_main.py imports `distutils`, removed from
+      # Python 3.12's stdlib. Pin to 3.11 across all runners so electron-rebuild
+      # can compile native deps (canvas via pdf-to-img). Setuptools also
+      # provides a `distutils` shim on 3.12+, but pinning is simpler and
+      # explicit.
+      - name: Set up Python (for node-gyp)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install dependencies
         run: npm ci
 

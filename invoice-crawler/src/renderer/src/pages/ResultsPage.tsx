@@ -17,6 +17,7 @@ import { DEFAULT_OUTPUT_FILENAME } from '@shared/constants';
 import { ipcInvoke } from '../hooks/useIpc';
 import { reprocessSingle, updateResult as updateLiveResult, useBatch } from '../hooks/useBatch';
 import { useHistoryRun } from '../hooks/useHistory';
+import { formatFullDate } from '../utils/date';
 
 interface ResultsSourceTemplate {
   id: string;
@@ -134,7 +135,7 @@ function HistoryResults({ runId }: { runId: string }) {
     mode: 'history',
     onEdit: updateResult,
     canReprocess: false,
-    contextLine: `${formatHistoryDate(record.createdAt)} · ${record.template.name}`,
+    contextLine: `${formatFullDate(record.createdAt)} · ${record.template.name}`,
   };
 
   return <ResultsView source={source} />;
@@ -496,13 +497,3 @@ function countByStatus(results: InvoiceResult[]): {
   return acc;
 }
 
-function formatHistoryDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}

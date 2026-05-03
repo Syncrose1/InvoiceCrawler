@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { RunSummary } from '@shared/types';
+import { basenameOf } from '@shared/utils';
 import { useHistoryList } from '../hooks/useHistory';
+import { formatRelativeDate } from '../utils/date';
 
 export default function HistoryPage() {
   const { runs, loading, remove } = useHistoryList();
@@ -23,7 +25,7 @@ export default function HistoryPage() {
   const grouped = useMemo(() => groupByMonth(runs), [runs]);
 
   async function handleDelete(run: RunSummary) {
-    const label = `${formatRelative(run.createdAt)} (${run.templateName})`;
+    const label = `${formatRelativeDate(run.createdAt)} (${run.templateName})`;
     if (!confirm(`Delete this run from ${label}? You can't get it back.`)) return;
     await remove(run.id);
   }
@@ -93,7 +95,7 @@ export default function HistoryPage() {
 }
 
 function RunCard({ run, onDelete }: { run: RunSummary; onDelete: () => void }) {
-  const folderName = run.folderPath.split(/[\\/]/).filter(Boolean).pop() ?? run.folderPath;
+  const folderName = basenameOf(run.folderPath);
 
   return (
     <motion.div
@@ -116,7 +118,7 @@ function RunCard({ run, onDelete }: { run: RunSummary; onDelete: () => void }) {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium">{formatRelative(run.createdAt)}</span>
+              <span className="text-sm font-medium">{formatRelativeDate(run.createdAt)}</span>
               {run.completion === 'cancelled' && (
                 <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ice-text-dim/15 text-ice-text-dim border border-ice-text-dim/30">
                   <Pause className="w-2.5 h-2.5" />
@@ -201,23 +203,3 @@ function groupByMonth(runs: RunSummary[]): { label: string; runs: RunSummary[] }
   return Array.from(groups.entries()).map(([label, list]) => ({ label, runs: list }));
 }
 
-function formatRelative(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.round(diffMs / 60_000);
-  const diffHr = Math.round(diffMs / 3_600_000);
-  const diffDay = Math.round(diffMs / 86_400_000);
-
-  if (diffMin < 1) return 'Just now';
-  if (diffMin < 60) return `${diffMin} ${diffMin === 1 ? 'minute' : 'minutes'} ago`;
-  if (diffHr < 24) return `${diffHr} ${diffHr === 1 ? 'hour' : 'hours'} ago`;
-  if (diffDay < 7) return `${diffDay} ${diffDay === 1 ? 'day' : 'days'} ago`;
-  return date.toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}

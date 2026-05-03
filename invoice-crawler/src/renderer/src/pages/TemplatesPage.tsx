@@ -12,12 +12,12 @@ import {
 import clsx from 'clsx';
 import type { ExtractionField, FieldTemplate } from '@shared/types';
 import { DEFAULT_FIELDS } from '@shared/constants';
+import { shortId, slugify } from '@shared/utils';
 import { useTemplates } from '../hooks/useTemplates';
 import { useSettings } from '../hooks/useSettings';
 
 function newField(): ExtractionField {
-  const id = `field-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-  return { id, name: '', key: '', synonyms: [] };
+  return { id: shortId('field'), name: '', key: '', synonyms: [] };
 }
 
 export default function TemplatesPage() {
@@ -516,10 +516,3 @@ function FieldRow({
   );
 }
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 40);
-}

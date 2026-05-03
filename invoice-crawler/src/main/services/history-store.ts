@@ -17,6 +17,15 @@ async function ensureDir(): Promise<void> {
   await fs.mkdir(dir(), { recursive: true });
 }
 
+async function readJson<T>(filePath: string): Promise<T | null> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The on-disk schema for run records changed when we split FirmProfile
  * into AppSettings + FieldTemplate. Old records had a `profile` field
@@ -92,14 +101,18 @@ function summarise(record: RunRecord): RunSummary {
 export async function listRuns(): Promise<RunSummary[]> {
   await ensureDir();
   const entries = await fs.readdir(dir());
+  const jsonFiles = entries.filter((e) => e.endsWith('.json'));
+  const loaded = await Promise.all(
+    jsonFiles.map((e) => readJson<LegacyRunRecord>(join(dir(), e))),
+  );
   const summaries: RunSummary[] = [];
-  for (const entry of entries) {
-    if (!entry.endsWith('.json')) continue;
+  for (const record of loaded) {
+    if (!record) continue;
     try {
-      const raw = await fs.readFile(join(dir(), entry), 'utf-8');
-      summaries.push(summarise(normaliseRecord(JSON.parse(raw) as LegacyRunRecord)));
+      summaries.push(summarise(normaliseRecord(record)));
     } catch {
-      // Skip corrupt history files rather than crashing the History page.
+      // Records that fail normalisation (missing both `template` and
+      // `profile`) are skipped rather than crashing the History page.
     }
   }
   summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -107,13 +120,8 @@ export async function listRuns(): Promise<RunSummary[]> {
 }
 
 export async function getRun(runId: string): Promise<RunRecord | null> {
-  try {
-    const raw = await fs.readFile(pathFor(runId), 'utf-8');
-    return normaliseRecord(JSON.parse(raw) as LegacyRunRecord);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw error;
-  }
+  const raw = await readJson<LegacyRunRecord>(pathFor(runId));
+  return raw ? normaliseRecord(raw) : null;
 }
 
 export async function saveRun(record: RunRecord): Promise<RunRecord> {

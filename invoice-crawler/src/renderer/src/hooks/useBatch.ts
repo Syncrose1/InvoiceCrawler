@@ -6,6 +6,7 @@ import type {
   InvoiceResult,
   RunRecord,
 } from '@shared/types';
+import { basenameOf, shortId } from '@shared/utils';
 import { ipcInvoke } from './useIpc';
 
 type BatchPhase = 'idle' | 'running' | 'complete' | 'error' | 'cancelled';
@@ -122,7 +123,7 @@ interface StartBatchOptions {
 
 export async function startBatch(opts: StartBatchOptions): Promise<void> {
   context = {
-    runId: `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    runId: shortId('run'),
     createdAt: new Date().toISOString(),
     folderPath: opts.folderPath,
     templateSnapshot: {
@@ -143,7 +144,7 @@ export async function startBatch(opts: StartBatchOptions): Promise<void> {
       completed: 0,
       currentFile: '',
       results: opts.filePaths.map((filePath) => ({
-        fileName: filePath.split(/[\\/]/).pop() ?? filePath,
+        fileName: basenameOf(filePath),
         filePath,
         status: 'pending',
         data: {},
