@@ -10,25 +10,29 @@ export default function ProcessingPage() {
   const batch = useBatch();
   const navigate = useNavigate();
 
+  const total = batch.progress?.total ?? 0;
+  const completed = batch.progress?.completed ?? 0;
+  // Derived flag — only flips at the moment of cancellation, so the
+  // navigate effect doesn't re-run on every progress tick.
+  const cancelledWithResults = batch.phase === 'cancelled' && completed > 0;
+
   // Auto-navigate to results when complete or cancelled (with results to show).
   useEffect(() => {
     if (batch.phase === 'complete') {
       const t = setTimeout(() => navigate('/results'), 700);
       return () => clearTimeout(t);
     }
-    if (batch.phase === 'cancelled' && batch.progress && batch.progress.completed > 0) {
+    if (cancelledWithResults) {
       const t = setTimeout(() => navigate('/results'), 500);
       return () => clearTimeout(t);
     }
-  }, [batch.phase, batch.progress, navigate]);
+  }, [batch.phase, cancelledWithResults, navigate]);
 
   // If user lands here without a running batch, send them home.
   useEffect(() => {
     if (batch.phase === 'idle') navigate('/', { replace: true });
   }, [batch.phase, navigate]);
 
-  const total = batch.progress?.total ?? 0;
-  const completed = batch.progress?.completed ?? 0;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   const currentFile = batch.progress?.currentFile ?? '';
   const results = batch.progress?.results ?? [];

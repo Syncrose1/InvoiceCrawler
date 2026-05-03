@@ -44,6 +44,7 @@
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
            bg-ice-surface border border-ice-border text-ice-text
            hover:border-ice-border-glow hover:bg-ice-surface-2 hover:-translate-y-px hover:shadow-glow-sm
+           focus-visible:outline-none focus-visible:border-ice-accent focus-visible:shadow-glow-md
            active:scale-[0.98] active:translate-y-0
            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none;
   }
@@ -52,6 +53,7 @@
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
            bg-ice-accent-soft border border-ice-accent/40 text-ice-text
            hover:bg-ice-accent/20 hover:border-ice-accent hover:shadow-glow-md hover:-translate-y-px
+           focus-visible:outline-none focus-visible:border-ice-accent focus-visible:shadow-glow-lg
            active:scale-[0.98] active:translate-y-0
            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none;
   }

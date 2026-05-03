@@ -1,7 +1,7 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Home, Settings, Sliders, Clock } from 'lucide-react';
-import SpiderIcon from './components/SpiderIcon';
+import SyncraticLogo from './components/SyncraticLogo';
 import ErrorBoundary from './components/ErrorBoundary';
 import UpdateBanner from './components/UpdateBanner';
 import HomePage from './pages/HomePage';
@@ -53,11 +53,11 @@ function Sidebar() {
     <aside className="w-60 border-r border-ice-border bg-ice-surface/40 backdrop-blur-ice flex flex-col">
       <div className="px-5 py-6 flex items-center gap-3 border-b border-ice-border group">
         <motion.div
-          whileHover={{ rotate: -8, scale: 1.05 }}
+          whileHover={{ scale: 1.06 }}
           transition={{ type: 'spring', stiffness: 300, damping: 15 }}
           className="w-9 h-9 rounded-lg bg-ice-accent-soft border border-ice-accent/40 flex items-center justify-center shadow-glow-sm group-hover:shadow-glow-md transition-shadow"
         >
-          <SpiderIcon className="w-5 h-5 text-ice-accent" />
+          <SyncraticLogo className="w-5 h-5 text-ice-accent" />
         </motion.div>
         <div>
           <div className="text-sm font-semibold tracking-tight">Invoice Crawler</div>
