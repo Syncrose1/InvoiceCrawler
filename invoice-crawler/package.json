@@ -25,16 +25,18 @@
     "clsx": "^2.1.1",
     "electron-updater": "^6.8.3",
     "framer-motion": "^11.15.0",
+    "jpeg-js": "^0.4.4",
     "lucide-react": "^0.469.0",
     "openai": "^6.35.0",
     "pdf-to-img": "^4.2.0",
+    "pngjs": "^7.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.0.0",
-    "sharp": "^0.33.5"
+    "react-router-dom": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
