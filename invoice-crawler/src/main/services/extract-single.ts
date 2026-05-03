@@ -1,5 +1,5 @@
 import { basename, extname } from 'path';
-import type { FirmProfile, InvoiceResult } from '@shared/types';
+import type { AiProviderName, FieldTemplate, InvoiceResult } from '@shared/types';
 import { SUPPORTED_PDF_EXTENSIONS } from '@shared/constants';
 import { encodeImageFile } from './image-encoder';
 import { convertPdfToImages } from './pdf-converter';
@@ -7,12 +7,18 @@ import { createAiProvider } from './ai-provider';
 import { cropToContent } from './image-cropper';
 import type { EncodedImage } from './image-encoder';
 
-export async function extractInvoice(
-  filePath: string,
-  profile: FirmProfile,
-  apiKey: string,
-  signal?: AbortSignal,
-): Promise<InvoiceResult> {
+export interface ExtractInvoiceOptions {
+  filePath: string;
+  template: FieldTemplate;
+  apiKey: string;
+  provider: AiProviderName;
+  model: string;
+  autoCrop: boolean;
+  signal?: AbortSignal;
+}
+
+export async function extractInvoice(opts: ExtractInvoiceOptions): Promise<InvoiceResult> {
+  const { filePath, template, apiKey, provider, model, autoCrop, signal } = opts;
   const fileName = basename(filePath);
   const baseResult: InvoiceResult = {
     fileName,
@@ -23,11 +29,11 @@ export async function extractInvoice(
 
   try {
     let images = await loadImages(filePath);
-    if (profile.autoCrop !== false) {
+    if (autoCrop) {
       images = await Promise.all(images.map((img) => cropToContent(img)));
     }
-    const provider = createAiProvider(profile.aiProvider, apiKey, profile.aiModel);
-    const data = await provider.extractInvoiceData(images, profile.fields, { signal });
+    const aiProvider = createAiProvider(provider, apiKey, model);
+    const data = await aiProvider.extractInvoiceData(images, template.fields, { signal });
     return { ...baseResult, status: 'success', data };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

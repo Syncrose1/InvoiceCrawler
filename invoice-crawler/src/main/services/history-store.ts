@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import type { RunRecord, RunSummary } from '@shared/types';
+import type { AiProviderName, ExtractionField, RunRecord, RunSummary } from '@shared/types';
 
 const HISTORY_DIR = 'history';
 
@@ -17,6 +17,58 @@ async function ensureDir(): Promise<void> {
   await fs.mkdir(dir(), { recursive: true });
 }
 
+/**
+ * The on-disk schema for run records changed when we split FirmProfile
+ * into AppSettings + FieldTemplate. Old records had a `profile` field
+ * with provider/model/fields all bundled; new records have a `template`
+ * field plus separate `aiProvider`/`aiModel`. Normalise old records on
+ * read so historical runs still display correctly.
+ */
+interface LegacyRunRecord {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  folderPath: string;
+  profile?: {
+    id: string;
+    name: string;
+    aiProvider: AiProviderName;
+    aiModel: string;
+    fields: ExtractionField[];
+  };
+  template?: RunRecord['template'];
+  aiProvider?: AiProviderName;
+  aiModel?: string;
+  results: RunRecord['results'];
+  completion: RunRecord['completion'];
+}
+
+function normaliseRecord(raw: LegacyRunRecord): RunRecord {
+  if (raw.template && raw.aiProvider && raw.aiModel) {
+    return raw as RunRecord;
+  }
+  // Migrate from the old shape: profile bundled provider/model/fields.
+  if (raw.profile) {
+    return {
+      id: raw.id,
+      createdAt: raw.createdAt,
+      updatedAt: raw.updatedAt,
+      folderPath: raw.folderPath,
+      template: {
+        id: raw.profile.id,
+        name: raw.profile.name,
+        fields: raw.profile.fields,
+      },
+      aiProvider: raw.profile.aiProvider,
+      aiModel: raw.profile.aiModel,
+      results: raw.results,
+      completion: raw.completion,
+    };
+  }
+  // Last-resort fallback; should never hit unless a record was hand-edited.
+  throw new Error(`Run record ${raw.id} is missing both 'template' and 'profile' fields`);
+}
+
 function summarise(record: RunRecord): RunSummary {
   let successCount = 0;
   let errorCount = 0;
@@ -29,7 +81,7 @@ function summarise(record: RunRecord): RunSummary {
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     folderPath: record.folderPath,
-    profileName: record.profile.name,
+    templateName: record.template.name,
     fileCount: record.results.length,
     successCount,
     errorCount,
@@ -45,12 +97,11 @@ export async function listRuns(): Promise<RunSummary[]> {
     if (!entry.endsWith('.json')) continue;
     try {
       const raw = await fs.readFile(join(dir(), entry), 'utf-8');
-      summaries.push(summarise(JSON.parse(raw) as RunRecord));
+      summaries.push(summarise(normaliseRecord(JSON.parse(raw) as LegacyRunRecord)));
     } catch {
       // Skip corrupt history files rather than crashing the History page.
     }
   }
-  // Most recent first.
   summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return summaries;
 }
@@ -58,7 +109,7 @@ export async function listRuns(): Promise<RunSummary[]> {
 export async function getRun(runId: string): Promise<RunRecord | null> {
   try {
     const raw = await fs.readFile(pathFor(runId), 'utf-8');
-    return JSON.parse(raw) as RunRecord;
+    return normaliseRecord(JSON.parse(raw) as LegacyRunRecord);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw error;

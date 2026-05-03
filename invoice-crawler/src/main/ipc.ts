@@ -2,16 +2,19 @@ import { ipcMain, dialog, BrowserWindow } from 'electron';
 import type { IpcInvokeMap } from '@shared/types';
 import { scanFolder } from './services/file-scanner';
 import {
-  buildDefaultProfile,
   decryptApiKey,
-  deleteProfile,
   encryptApiKey,
-  getProfile,
-  listProfiles,
-  saveProfile,
-} from './services/profile-store';
+  loadSettings,
+  saveSettings,
+} from './services/settings-store';
+import {
+  buildDefaultTemplate,
+  deleteTemplate,
+  getTemplate,
+  listTemplates,
+  saveTemplate,
+} from './services/templates-store';
 import { extractInvoice } from './services/extract-single';
-import { loadSettings, saveSettings } from './services/settings-store';
 import { BatchProcessor } from './services/batch-processor';
 import { exportCsv } from './services/csv-exporter';
 import { downloadUpdate, quitAndInstall } from './services/updater';
@@ -64,20 +67,28 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
 
   handle('fs:scan-folder', async (folderPath) => scanFolder(folderPath));
 
-  handle('profiles:list', async () => listProfiles());
-  handle('profiles:save', async (profile) => saveProfile(profile));
-  handle('profiles:delete', async (profileId) => {
-    await deleteProfile(profileId);
+  handle('templates:list', async () => listTemplates());
+  handle('templates:save', async (template) => saveTemplate(template));
+  handle('templates:delete', async (templateId) => {
+    await deleteTemplate(templateId);
+    // If the user just deleted their default template, drop the dangling pointer.
+    const settings = await loadSettings();
+    if (settings.defaultTemplateId === templateId) {
+      await saveSettings({ defaultTemplateId: null });
+    }
   });
-  handle('profiles:create-default', async () => saveProfile(buildDefaultProfile()));
-  handle('profiles:set-api-key', async (profileId, apiKey) => {
-    const profile = await getProfile(profileId);
-    if (!profile) throw new Error(`Profile not found: ${profileId}`);
-    return saveProfile({ ...profile, apiKeyEncrypted: encryptApiKey(apiKey) });
-  });
+  handle('templates:create-default', async () => saveTemplate(buildDefaultTemplate()));
 
   handle('settings:get', async () => loadSettings());
   handle('settings:set', async (patch) => saveSettings(patch));
+  handle('settings:set-api-key', async (apiKey) =>
+    saveSettings({ apiKeyEncrypted: encryptApiKey(apiKey) }),
+  );
+  handle('settings:has-api-key', async () => {
+    const settings = await loadSettings();
+    if (!settings.apiKeyEncrypted) return false;
+    return decryptApiKey(settings.apiKeyEncrypted).length > 0;
+  });
 
   handle('update:download', async () => {
     await downloadUpdate();
@@ -93,26 +104,28 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
     await deleteRun(runId);
   });
 
-  handle('batch:start', async (filePaths, profileId) => {
-    const profile = await getProfile(profileId);
-    if (!profile) {
-      emit('batch:error', `Profile not found: ${profileId}`);
+  handle('batch:start', async (filePaths, templateId) => {
+    const template = await getTemplate(templateId);
+    if (!template) {
+      emit('batch:error', `Template not found: ${templateId}`);
       return;
     }
-    const apiKey = decryptApiKey(profile.apiKeyEncrypted);
+    const settings = await loadSettings();
+    const apiKey = decryptApiKey(settings.apiKeyEncrypted);
     if (!apiKey) {
-      emit('batch:error', 'No API key configured for this profile');
+      emit('batch:error', 'No API key configured. Pop into Settings to add one.');
       return;
     }
 
-    // Run in the background so the IPC call returns immediately;
-    // progress and completion are pushed via events.
     void (async () => {
       try {
         const results = await batchProcessor.run({
           filePaths,
-          profile,
+          template,
           apiKey,
+          provider: settings.aiProvider,
+          model: settings.aiModel,
+          autoCrop: settings.autoCrop,
           onProgress: (progress) => emit('batch:progress', progress),
         });
         emit('batch:complete', results);
@@ -130,27 +143,35 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
     await exportCsv(results, fields, outputPath);
   });
 
-  handle('reprocess:single', async (filePath, profileId) => {
-    const profile = await getProfile(profileId);
-    if (!profile) {
+  handle('reprocess:single', async (filePath, templateId) => {
+    const template = await getTemplate(templateId);
+    if (!template) {
       return {
         fileName: filePath,
         filePath,
         status: 'error',
         data: {},
-        error: `Profile not found: ${profileId}`,
+        error: `Template not found: ${templateId}`,
       };
     }
-    const apiKey = decryptApiKey(profile.apiKeyEncrypted);
+    const settings = await loadSettings();
+    const apiKey = decryptApiKey(settings.apiKeyEncrypted);
     if (!apiKey) {
       return {
         fileName: filePath,
         filePath,
         status: 'error',
         data: {},
-        error: 'No API key configured for this profile',
+        error: 'No API key configured.',
       };
     }
-    return extractInvoice(filePath, profile, apiKey);
+    return extractInvoice({
+      filePath,
+      template,
+      apiKey,
+      provider: settings.aiProvider,
+      model: settings.aiModel,
+      autoCrop: settings.autoCrop,
+    });
   });
 }

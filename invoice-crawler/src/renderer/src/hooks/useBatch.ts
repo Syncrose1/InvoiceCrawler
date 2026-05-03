@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { BatchProgress, FirmProfile, InvoiceResult, RunRecord } from '@shared/types';
+import type {
+  AiProviderName,
+  BatchProgress,
+  FieldTemplate,
+  InvoiceResult,
+  RunRecord,
+} from '@shared/types';
 import { ipcInvoke } from './useIpc';
 
 type BatchPhase = 'idle' | 'running' | 'complete' | 'error' | 'cancelled';
@@ -16,7 +22,9 @@ interface RunContext {
   runId: string;
   createdAt: string;
   folderPath: string;
-  profileSnapshot: RunRecord['profile'];
+  templateSnapshot: RunRecord['template'];
+  aiProvider: AiProviderName;
+  aiModel: string;
 }
 
 const initialState: BatchState = {
@@ -48,7 +56,9 @@ function buildRecord(
     createdAt: ctx.createdAt,
     updatedAt: new Date().toISOString(),
     folderPath: ctx.folderPath,
-    profile: ctx.profileSnapshot,
+    template: ctx.templateSnapshot,
+    aiProvider: ctx.aiProvider,
+    aiModel: ctx.aiModel,
     results,
     completion,
   };
@@ -102,22 +112,26 @@ function wireListenersOnce(): void {
   });
 }
 
-export async function startBatch(
-  filePaths: string[],
-  profile: FirmProfile,
-  folderPath: string,
-): Promise<void> {
+interface StartBatchOptions {
+  filePaths: string[];
+  template: FieldTemplate;
+  folderPath: string;
+  aiProvider: AiProviderName;
+  aiModel: string;
+}
+
+export async function startBatch(opts: StartBatchOptions): Promise<void> {
   context = {
     runId: `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date().toISOString(),
-    folderPath,
-    profileSnapshot: {
-      id: profile.id,
-      name: profile.name,
-      aiProvider: profile.aiProvider,
-      aiModel: profile.aiModel,
-      fields: profile.fields,
+    folderPath: opts.folderPath,
+    templateSnapshot: {
+      id: opts.template.id,
+      name: opts.template.name,
+      fields: opts.template.fields,
     },
+    aiProvider: opts.aiProvider,
+    aiModel: opts.aiModel,
   };
 
   // Pre-seed an optimistic running state so the ProcessingPage doesn't
@@ -125,10 +139,10 @@ export async function startBatch(
   set({
     phase: 'running',
     progress: {
-      total: filePaths.length,
+      total: opts.filePaths.length,
       completed: 0,
       currentFile: '',
-      results: filePaths.map((filePath) => ({
+      results: opts.filePaths.map((filePath) => ({
         fileName: filePath.split(/[\\/]/).pop() ?? filePath,
         filePath,
         status: 'pending',
@@ -139,7 +153,7 @@ export async function startBatch(
     error: null,
     runId: context.runId,
   });
-  await ipcInvoke('batch:start', filePaths, profile.id);
+  await ipcInvoke('batch:start', opts.filePaths, opts.template.id);
 }
 
 export async function cancelBatch(): Promise<void> {
@@ -184,9 +198,12 @@ export function updateResult(filePath: string, patch: Partial<InvoiceResult>): v
   }
 }
 
-export async function reprocessSingle(filePath: string, profileId: string): Promise<InvoiceResult> {
+export async function reprocessSingle(
+  filePath: string,
+  templateId: string,
+): Promise<InvoiceResult> {
   updateResult(filePath, { status: 'processing', error: undefined });
-  const result = await ipcInvoke('reprocess:single', filePath, profileId);
+  const result = await ipcInvoke('reprocess:single', filePath, templateId);
   updateResult(filePath, result);
   return result;
 }

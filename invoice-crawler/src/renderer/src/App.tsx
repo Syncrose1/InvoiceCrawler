@@ -6,7 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import UpdateBanner from './components/UpdateBanner';
 import HomePage from './pages/HomePage';
 import SettingsPage from './pages/SettingsPage';
-import FieldEditorPage from './pages/FieldEditorPage';
+import TemplatesPage from './pages/TemplatesPage';
 import ProcessingPage from './pages/ProcessingPage';
 import ResultsPage from './pages/ResultsPage';
 import HistoryPage from './pages/HistoryPage';
@@ -34,7 +34,7 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/history" element={<HistoryPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/fields" element={<FieldEditorPage />} />
+                <Route path="/templates" element={<TemplatesPage />} />
                 <Route path="/processing" element={<ProcessingPage />} />
                 <Route path="/results" element={<ResultsPage />} />
                 <Route path="/results/:runId" element={<ResultsPage />} />
@@ -69,7 +69,7 @@ function Sidebar() {
       <nav className="flex-1 p-3 space-y-1">
         <NavItem to="/" icon={<Home className="w-4 h-4" />} label="Home" />
         <NavItem to="/history" icon={<Clock className="w-4 h-4" />} label="History" />
-        <NavItem to="/fields" icon={<Sliders className="w-4 h-4" />} label="Fields" />
+        <NavItem to="/templates" icon={<Sliders className="w-4 h-4" />} label="Templates" />
         <NavItem to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
       </nav>
       <div className="p-4 text-[10px] text-ice-text-dim border-t border-ice-border leading-relaxed">

@@ -1,13 +1,21 @@
 import { basename } from 'path';
 import { setMaxListeners } from 'events';
-import type { BatchProgress, FirmProfile, InvoiceResult } from '@shared/types';
+import type {
+  AiProviderName,
+  BatchProgress,
+  FieldTemplate,
+  InvoiceResult,
+} from '@shared/types';
 import { BATCH_CONCURRENCY } from '@shared/constants';
 import { extractInvoice } from './extract-single';
 
 interface BatchOptions {
   filePaths: string[];
-  profile: FirmProfile;
+  template: FieldTemplate;
   apiKey: string;
+  provider: AiProviderName;
+  model: string;
+  autoCrop: boolean;
   onProgress: (progress: BatchProgress) => void;
 }
 
@@ -35,7 +43,7 @@ export class BatchProcessor {
     // headroom for SDK internals and any future bump in concurrency.
     setMaxListeners(BATCH_CONCURRENCY * 4 + 10, signal);
 
-    const { filePaths, profile, apiKey, onProgress } = options;
+    const { filePaths, template, apiKey, provider, model, autoCrop, onProgress } = options;
     const total = filePaths.length;
 
     // Seed all results as pending so the renderer can render the full list immediately.
@@ -68,7 +76,15 @@ export class BatchProcessor {
         results[index] = { ...results[index], status: 'processing' };
         emit(results[index].fileName);
 
-        const result = await extractInvoice(filePaths[index], profile, apiKey, signal);
+        const result = await extractInvoice({
+          filePath: filePaths[index],
+          template,
+          apiKey,
+          provider,
+          model,
+          autoCrop,
+          signal,
+        });
         results[index] = result;
 
         completed += 1;

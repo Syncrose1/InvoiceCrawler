@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, nativeImage } from 'electron';
 import { join } from 'path';
 import { registerIpcHandlers } from './ipc';
 import { initAutoUpdater } from './services/updater';
+import { migrateProfilesToTemplates } from './services/settings-store';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -56,7 +57,15 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // One-shot migration from the old FirmProfile model. Idempotent —
+  // does nothing if there's no legacy profiles/ directory.
+  try {
+    await migrateProfilesToTemplates();
+  } catch (error) {
+    console.error('Profile migration failed (non-fatal):', error);
+  }
+
   registerIpcHandlers(() => mainWindow);
   createWindow();
   initAutoUpdater(() => mainWindow);

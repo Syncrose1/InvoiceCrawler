@@ -23,7 +23,7 @@ export default function HistoryPage() {
   const grouped = useMemo(() => groupByMonth(runs), [runs]);
 
   async function handleDelete(run: RunSummary) {
-    const label = `${formatRelative(run.createdAt)} (${run.profileName})`;
+    const label = `${formatRelative(run.createdAt)} (${run.templateName})`;
     if (!confirm(`Delete this run from ${label}? You can't get it back.`)) return;
     await remove(run.id);
   }
@@ -127,7 +127,7 @@ function RunCard({ run, onDelete }: { run: RunSummary; onDelete: () => void }) {
             <div className="flex items-center gap-3 text-xs text-ice-text-muted min-w-0">
               <span className="inline-flex items-center gap-1.5 shrink-0">
                 <Building2 className="w-3 h-3" />
-                {run.profileName}
+                {run.templateName}
               </span>
               <span className="inline-flex items-center gap-1.5 truncate">
                 <FolderOpen className="w-3 h-3 shrink-0" />

@@ -18,7 +18,7 @@ import { ipcInvoke } from '../hooks/useIpc';
 import { reprocessSingle, updateResult as updateLiveResult, useBatch } from '../hooks/useBatch';
 import { useHistoryRun } from '../hooks/useHistory';
 
-interface ResultsSourceProfile {
+interface ResultsSourceTemplate {
   id: string;
   name: string;
   fields: ExtractionField[];
@@ -26,7 +26,7 @@ interface ResultsSourceProfile {
 
 interface ResultsSource {
   results: InvoiceResult[];
-  profile: ResultsSourceProfile;
+  template: ResultsSourceTemplate;
   /** Live = the in-flight or just-finished batch; History = a saved past run. */
   mode: 'live' | 'history';
   /** Editing strategy differs by mode (live mutates state, history saves to disk). */
@@ -59,20 +59,20 @@ function LiveResults() {
     if (batch.phase === 'idle') navigate('/', { replace: true });
   }, [batch.phase, navigate]);
 
-  // We need a profile snapshot for the live source; the batch carries the runId
-  // but not the snapshot, so we fetch the saved record once the batch completes.
-  // Until then we read from the live profile via the saved record (best-effort).
-  const [profile, setProfile] = useState<ResultsSourceProfile | null>(null);
+  // We need the template snapshot for the live source; the batch carries the
+  // runId but not the snapshot, so we fetch the saved record once the batch
+  // completes. Until then the EmptyState shows.
+  const [template, setTemplate] = useState<ResultsSourceTemplate | null>(null);
   useEffect(() => {
     if (!batch.runId) return;
     let cancelled = false;
     void (async () => {
       const record = await ipcInvoke('history:get', batch.runId!);
       if (cancelled || !record) return;
-      setProfile({
-        id: record.profile.id,
-        name: record.profile.name,
-        fields: record.profile.fields,
+      setTemplate({
+        id: record.template.id,
+        name: record.template.name,
+        fields: record.template.fields,
       });
     })();
     return () => {
@@ -80,13 +80,13 @@ function LiveResults() {
     };
   }, [batch.runId, batch.phase]);
 
-  if (results.length === 0 || !profile) {
+  if (results.length === 0 || !template) {
     return <EmptyState />;
   }
 
   const source: ResultsSource = {
     results,
-    profile,
+    template,
     mode: 'live',
     onEdit: (filePath, patch) => updateLiveResult(filePath, patch),
     canReprocess: true,
@@ -126,15 +126,15 @@ function HistoryResults({ runId }: { runId: string }) {
 
   const source: ResultsSource = {
     results: record.results,
-    profile: {
-      id: record.profile.id,
-      name: record.profile.name,
-      fields: record.profile.fields,
+    template: {
+      id: record.template.id,
+      name: record.template.name,
+      fields: record.template.fields,
     },
     mode: 'history',
     onEdit: updateResult,
     canReprocess: false,
-    contextLine: `${formatHistoryDate(record.createdAt)} · ${record.profile.name}`,
+    contextLine: `${formatHistoryDate(record.createdAt)} · ${record.template.name}`,
   };
 
   return <ResultsView source={source} />;
@@ -168,8 +168,8 @@ function ResultsView({ source }: { source: ResultsSource }) {
   const [exportedFlash, setExportedFlash] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const { results, profile, mode, onEdit, canReprocess, contextLine } = source;
-  const fields = profile.fields;
+  const { results, template, mode, onEdit, canReprocess, contextLine } = source;
+  const fields = template.fields;
 
   const counts = useMemo(() => countByStatus(results), [results]);
   const successful = counts.success;
@@ -194,7 +194,7 @@ function ResultsView({ source }: { source: ResultsSource }) {
   async function handleRetry(filePath: string) {
     if (!canReprocess) return;
     try {
-      await reprocessSingle(filePath, profile.id);
+      await reprocessSingle(filePath, template.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       updateLiveResult(filePath, { status: 'error', error: message });
@@ -264,8 +264,7 @@ function ResultsView({ source }: { source: ResultsSource }) {
           >
             <Check className="w-4 h-4" />
             <span>
-              Exported to <span className="font-medium">{exportedFlash}</span> — your dad's going
-              to love this.
+              Exported to <span className="font-medium">{exportedFlash}</span> — all yours.
             </span>
           </motion.div>
         )}
