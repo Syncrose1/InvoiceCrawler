@@ -15,6 +15,13 @@ export interface FirmProfile {
   aiProvider: AiProviderName;
   aiModel: string;
   apiKeyEncrypted: string;
+  /**
+   * Auto-crop negative space around invoice content before sending to the
+   * vision API. Improves accuracy on scans/PDFs where the invoice is small
+   * relative to the page. Defaults to true; disable only if you see
+   * unexpected clipping.
+   */
+  autoCrop?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +53,40 @@ export interface AppSettings {
   lastFolderPath: string | null;
 }
 
+/**
+ * A persisted record of a single batch run. Profile and fields are
+ * snapshotted (without the API key) so historical runs survive the live
+ * profile being edited or deleted later.
+ */
+export interface RunRecord {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  folderPath: string;
+  profile: {
+    id: string;
+    name: string;
+    aiProvider: AiProviderName;
+    aiModel: string;
+    fields: ExtractionField[];
+  };
+  results: InvoiceResult[];
+  /** 'cancelled' if the user stopped mid-batch; 'complete' otherwise. */
+  completion: 'complete' | 'cancelled';
+}
+
+export interface RunSummary {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  folderPath: string;
+  profileName: string;
+  fileCount: number;
+  successCount: number;
+  errorCount: number;
+  completion: 'complete' | 'cancelled';
+}
+
 export type UpdateStatus =
   | { phase: 'idle' }
   | { phase: 'checking' }
@@ -67,6 +108,10 @@ export interface IpcInvokeMap {
   'settings:set': { args: [patch: Partial<AppSettings>]; return: AppSettings };
   'update:download': { args: []; return: void };
   'update:install': { args: []; return: void };
+  'history:list': { args: []; return: RunSummary[] };
+  'history:get': { args: [runId: string]; return: RunRecord | null };
+  'history:save': { args: [run: RunRecord]; return: RunRecord };
+  'history:delete': { args: [runId: string]; return: void };
   'batch:start': { args: [filePaths: string[], profileId: string]; return: void };
   'batch:cancel': { args: []; return: void };
   'export:csv': {

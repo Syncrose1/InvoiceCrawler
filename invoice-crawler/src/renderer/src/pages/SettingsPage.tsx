@@ -180,6 +180,7 @@ function ProfileEditor({
   const [name, setName] = useState(profile.name);
   const [provider, setProvider] = useState<AiProviderName>(profile.aiProvider);
   const [model, setModel] = useState(profile.aiModel);
+  const [autoCrop, setAutoCrop] = useState(profile.autoCrop !== false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [savedFlash, setSavedFlash] = useState(false);
   const [keySavedFlash, setKeySavedFlash] = useState(false);
@@ -188,8 +189,9 @@ function ProfileEditor({
     setName(profile.name);
     setProvider(profile.aiProvider);
     setModel(profile.aiModel);
+    setAutoCrop(profile.autoCrop !== false);
     setApiKeyInput('');
-  }, [profile.id, profile.name, profile.aiProvider, profile.aiModel]);
+  }, [profile.id, profile.name, profile.aiProvider, profile.aiModel, profile.autoCrop]);
 
   // When provider changes, snap model to first option for that provider.
   useEffect(() => {
@@ -199,7 +201,13 @@ function ProfileEditor({
   }, [provider, model]);
 
   async function handleSave() {
-    await onSave({ ...profile, name: name.trim() || profile.name, aiProvider: provider, aiModel: model });
+    await onSave({
+      ...profile,
+      name: name.trim() || profile.name,
+      aiProvider: provider,
+      aiModel: model,
+      autoCrop,
+    });
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1500);
   }
@@ -313,6 +321,44 @@ function ProfileEditor({
           Tucked safely in your OS keychain via Electron's safeStorage. We never send it anywhere
           except the AI provider you've chosen.
         </p>
+      </div>
+
+      <div>
+        <div className="text-xs uppercase tracking-wider text-ice-text-dim mb-2">
+          Image preprocessing
+        </div>
+        <button
+          type="button"
+          onClick={() => setAutoCrop((v) => !v)}
+          className={clsx(
+            'group w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-all duration-150',
+            autoCrop
+              ? 'bg-ice-accent-soft/50 border-ice-accent/40'
+              : 'bg-ice-surface border-ice-border hover:border-ice-border-glow',
+          )}
+        >
+          <div
+            className={clsx(
+              'mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors',
+              autoCrop
+                ? 'bg-ice-accent border-ice-accent text-ice-bg'
+                : 'border-ice-border bg-ice-bg group-hover:border-ice-text-dim',
+            )}
+          >
+            {autoCrop && (
+              <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2.5 6.5l2.5 2.5 4.5-5" />
+              </svg>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">Trim negative space before reading</div>
+            <div className="text-[11px] text-ice-text-dim mt-0.5 leading-relaxed">
+              Crops dead space around the actual invoice content so the AI sees larger, more
+              legible text. Recommended on. Turn off only if you spot unexpected clipping.
+            </div>
+          </div>
+        </button>
       </div>
 
       <div className="pt-4 border-t border-ice-border flex justify-end">

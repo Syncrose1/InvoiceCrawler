@@ -1,10 +1,10 @@
-import { extname } from 'path';
-import { basename } from 'path';
+import { basename, extname } from 'path';
 import type { FirmProfile, InvoiceResult } from '@shared/types';
 import { SUPPORTED_PDF_EXTENSIONS } from '@shared/constants';
 import { encodeImageFile } from './image-encoder';
 import { convertPdfToImages } from './pdf-converter';
 import { createAiProvider } from './ai-provider';
+import { cropToContent } from './image-cropper';
 import type { EncodedImage } from './image-encoder';
 
 export async function extractInvoice(
@@ -22,7 +22,10 @@ export async function extractInvoice(
   };
 
   try {
-    const images = await loadImages(filePath);
+    let images = await loadImages(filePath);
+    if (profile.autoCrop !== false) {
+      images = await Promise.all(images.map((img) => cropToContent(img)));
+    }
     const provider = createAiProvider(profile.aiProvider, apiKey, profile.aiModel);
     const data = await provider.extractInvoiceData(images, profile.fields, { signal });
     return { ...baseResult, status: 'success', data };

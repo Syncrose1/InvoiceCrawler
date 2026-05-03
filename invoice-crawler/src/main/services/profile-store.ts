@@ -92,6 +92,7 @@ export function buildDefaultProfile(): FirmProfile {
     aiProvider: 'anthropic',
     aiModel: PROVIDER_MODELS.anthropic[0].id,
     apiKeyEncrypted: '',
+    autoCrop: true,
     createdAt: now,
     updatedAt: now,
   };

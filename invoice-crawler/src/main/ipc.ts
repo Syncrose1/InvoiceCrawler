@@ -15,6 +15,7 @@ import { loadSettings, saveSettings } from './services/settings-store';
 import { BatchProcessor } from './services/batch-processor';
 import { exportCsv } from './services/csv-exporter';
 import { downloadUpdate, quitAndInstall } from './services/updater';
+import { deleteRun, getRun, listRuns, saveRun } from './services/history-store';
 
 type GetMainWindow = () => BrowserWindow | null;
 
@@ -83,6 +84,13 @@ export function registerIpcHandlers(getMainWindow: GetMainWindow): void {
   });
   handle('update:install', async () => {
     quitAndInstall();
+  });
+
+  handle('history:list', async () => listRuns());
+  handle('history:get', async (runId) => getRun(runId));
+  handle('history:save', async (run) => saveRun(run));
+  handle('history:delete', async (runId) => {
+    await deleteRun(runId);
   });
 
   handle('batch:start', async (filePaths, profileId) => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Download,
   RefreshCw,
@@ -9,17 +9,47 @@ import {
   Loader2,
   FileSpreadsheet,
   Sparkles,
+  Clock,
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { ExtractionField, InvoiceResult } from '@shared/types';
 import { DEFAULT_OUTPUT_FILENAME } from '@shared/constants';
 import { ipcInvoke } from '../hooks/useIpc';
-import { reprocessSingle, updateResult, useBatch } from '../hooks/useBatch';
-import { useProfiles } from '../hooks/useProfiles';
+import { reprocessSingle, updateResult as updateLiveResult, useBatch } from '../hooks/useBatch';
+import { useHistoryRun } from '../hooks/useHistory';
+
+interface ResultsSourceProfile {
+  id: string;
+  name: string;
+  fields: ExtractionField[];
+}
+
+interface ResultsSource {
+  results: InvoiceResult[];
+  profile: ResultsSourceProfile;
+  /** Live = the in-flight or just-finished batch; History = a saved past run. */
+  mode: 'live' | 'history';
+  /** Editing strategy differs by mode (live mutates state, history saves to disk). */
+  onEdit: (filePath: string, patch: Partial<InvoiceResult>) => void | Promise<void>;
+  /** Reprocess is only available in live mode (history runs are immutable to the AI). */
+  canReprocess: boolean;
+  /** Header subtitle line — different copy for live vs historical runs. */
+  contextLine?: string;
+}
 
 export default function ResultsPage() {
+  const params = useParams<{ runId?: string }>();
+  const runId = params.runId;
+  const isHistoryMode = !!runId;
+
+  if (isHistoryMode) {
+    return <HistoryResults runId={runId} />;
+  }
+  return <LiveResults />;
+}
+
+function LiveResults() {
   const batch = useBatch();
-  const { activeProfile } = useProfiles();
   const navigate = useNavigate();
 
   const results = batch.results ?? batch.progress?.results ?? [];
@@ -29,13 +59,85 @@ export default function ResultsPage() {
     if (batch.phase === 'idle') navigate('/', { replace: true });
   }, [batch.phase, navigate]);
 
-  if (results.length === 0 || !activeProfile) {
+  // We need a profile snapshot for the live source; the batch carries the runId
+  // but not the snapshot, so we fetch the saved record once the batch completes.
+  // Until then we read from the live profile via the saved record (best-effort).
+  const [profile, setProfile] = useState<ResultsSourceProfile | null>(null);
+  useEffect(() => {
+    if (!batch.runId) return;
+    let cancelled = false;
+    void (async () => {
+      const record = await ipcInvoke('history:get', batch.runId!);
+      if (cancelled || !record) return;
+      setProfile({
+        id: record.profile.id,
+        name: record.profile.name,
+        fields: record.profile.fields,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [batch.runId, batch.phase]);
+
+  if (results.length === 0 || !profile) {
     return <EmptyState />;
   }
 
-  return (
-    <ResultsView profile={activeProfile} results={results} fields={activeProfile.fields} />
-  );
+  const source: ResultsSource = {
+    results,
+    profile,
+    mode: 'live',
+    onEdit: (filePath, patch) => updateLiveResult(filePath, patch),
+    canReprocess: true,
+  };
+
+  return <ResultsView source={source} />;
+}
+
+function HistoryResults({ runId }: { runId: string }) {
+  const { record, loading, notFound, updateResult } = useHistoryRun(runId);
+  const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-5 h-5 text-ice-text-dim animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound || !record) {
+    return (
+      <div className="h-full flex items-center justify-center px-12">
+        <div className="ice-card frost-overlay p-10 text-center max-w-md">
+          <FileSpreadsheet className="w-10 h-10 text-ice-text-dim mx-auto mb-4" />
+          <h2 className="text-lg font-semibold mb-1">That run's not here.</h2>
+          <p className="text-sm text-ice-text-muted mb-6">
+            It may have been deleted, or the link's gone stale.
+          </p>
+          <button onClick={() => navigate('/history')} className="ice-button-primary">
+            Back to history
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const source: ResultsSource = {
+    results: record.results,
+    profile: {
+      id: record.profile.id,
+      name: record.profile.name,
+      fields: record.profile.fields,
+    },
+    mode: 'history',
+    onEdit: updateResult,
+    canReprocess: false,
+    contextLine: `${formatHistoryDate(record.createdAt)} · ${record.profile.name}`,
+  };
+
+  return <ResultsView source={source} />;
 }
 
 function EmptyState() {
@@ -60,19 +162,14 @@ function EmptyState() {
   );
 }
 
-function ResultsView({
-  profile,
-  results,
-  fields,
-}: {
-  profile: { id: string; name: string };
-  results: InvoiceResult[];
-  fields: ExtractionField[];
-}) {
+function ResultsView({ source }: { source: ResultsSource }) {
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [exportedFlash, setExportedFlash] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  const { results, profile, mode, onEdit, canReprocess, contextLine } = source;
+  const fields = profile.fields;
 
   const counts = useMemo(() => countByStatus(results), [results]);
   const successful = counts.success;
@@ -95,19 +192,24 @@ function ResultsView({
   }
 
   async function handleRetry(filePath: string) {
+    if (!canReprocess) return;
     try {
       await reprocessSingle(filePath, profile.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      updateResult(filePath, { status: 'error', error: message });
+      updateLiveResult(filePath, { status: 'error', error: message });
     }
   }
 
   function handleCellEdit(filePath: string, key: string, value: string) {
     const target = results.find((r) => r.filePath === filePath);
     if (!target) return;
-    updateResult(filePath, { data: { ...target.data, [key]: value } });
+    void onEdit(filePath, { data: { ...target.data, [key]: value } });
   }
+
+  const subtitle =
+    contextLine ??
+    "Have a read through, fix anything that needs a tweak, then pop it into a CSV. Any edits you make here will land in the export.";
 
   return (
     <div className="h-full flex flex-col px-12 py-8 max-w-[1400px] mx-auto w-full">
@@ -119,19 +221,25 @@ function ResultsView({
         className="mb-6"
       >
         <div className="flex items-end justify-between gap-6 mb-2">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-ice-accent" />
-              <span>Results</span>
+              {mode === 'history' ? (
+                <Clock className="w-5 h-5 text-ice-accent" />
+              ) : (
+                <Sparkles className="w-5 h-5 text-ice-accent" />
+              )}
+              <span>{mode === 'history' ? 'Past run' : 'Results'}</span>
             </h1>
-            <p className="text-sm text-ice-text-muted mt-1">
-              Have a read through, fix anything that needs a tweak, then pop it into a CSV.
-              Any edits you make here will land in the export.
+            <p className="text-sm text-ice-text-muted mt-1 flex items-center gap-2">
+              <span className="truncate">{subtitle}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/')} className="ice-button">
-              New batch
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => navigate(mode === 'history' ? '/history' : '/')}
+              className="ice-button"
+            >
+              {mode === 'history' ? 'Back to history' : 'New batch'}
             </button>
             <button
               onClick={handleExport}
@@ -197,6 +305,7 @@ function ResultsView({
                   result={result}
                   fields={fields}
                   zebra={i % 2 === 1}
+                  canRetry={canReprocess}
                   onCellEdit={handleCellEdit}
                   onRetry={() => handleRetry(result.filePath)}
                 />
@@ -213,12 +322,14 @@ function ResultRow({
   result,
   fields,
   zebra,
+  canRetry,
   onCellEdit,
   onRetry,
 }: {
   result: InvoiceResult;
   fields: ExtractionField[];
   zebra: boolean;
+  canRetry: boolean;
   onCellEdit: (filePath: string, key: string, value: string) => void;
   onRetry: () => void;
 }) {
@@ -246,7 +357,7 @@ function ResultRow({
         />
       ))}
       <Td className="text-right">
-        {(result.status === 'error' || result.status === 'success') && (
+        {canRetry && (result.status === 'error' || result.status === 'success') && (
           <button
             onClick={onRetry}
             className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] text-ice-text-muted hover:text-ice-accent hover:bg-ice-accent-soft border border-transparent hover:border-ice-accent/30"
@@ -384,4 +495,15 @@ function countByStatus(results: InvoiceResult[]): {
   const acc = { success: 0, error: 0, pending: 0, processing: 0 };
   for (const r of results) acc[r.status] += 1;
   return acc;
+}
+
+function formatHistoryDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

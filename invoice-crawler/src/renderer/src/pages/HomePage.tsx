@@ -61,7 +61,7 @@ export default function HomePage() {
         setScanError('No supported files found in this folder.');
         return;
       }
-      await startBatch(scan.files, activeProfile.id);
+      await startBatch(scan.files, activeProfile, folderPath);
       navigate('/processing');
     } catch (err) {
       setScanError(err instanceof Error ? err.message : String(err));

@@ -1,6 +1,6 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, Settings, Sliders } from 'lucide-react';
+import { Home, Settings, Sliders, Clock } from 'lucide-react';
 import SpiderIcon from './components/SpiderIcon';
 import ErrorBoundary from './components/ErrorBoundary';
 import UpdateBanner from './components/UpdateBanner';
@@ -9,6 +9,7 @@ import SettingsPage from './pages/SettingsPage';
 import FieldEditorPage from './pages/FieldEditorPage';
 import ProcessingPage from './pages/ProcessingPage';
 import ResultsPage from './pages/ResultsPage';
+import HistoryPage from './pages/HistoryPage';
 import clsx from 'clsx';
 
 export default function App() {
@@ -31,10 +32,12 @@ export default function App() {
             <ErrorBoundary>
               <Routes location={location}>
                 <Route path="/" element={<HomePage />} />
+                <Route path="/history" element={<HistoryPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/fields" element={<FieldEditorPage />} />
                 <Route path="/processing" element={<ProcessingPage />} />
                 <Route path="/results" element={<ResultsPage />} />
+                <Route path="/results/:runId" element={<ResultsPage />} />
               </Routes>
             </ErrorBoundary>
           </motion.div>
@@ -65,6 +68,7 @@ function Sidebar() {
       </div>
       <nav className="flex-1 p-3 space-y-1">
         <NavItem to="/" icon={<Home className="w-4 h-4" />} label="Home" />
+        <NavItem to="/history" icon={<Clock className="w-4 h-4" />} label="History" />
         <NavItem to="/fields" icon={<Sliders className="w-4 h-4" />} label="Fields" />
         <NavItem to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
       </nav>
