@@ -1,6 +1,11 @@
-import { autoUpdater } from 'electron-updater';
+// electron-updater is CommonJS — under our ESM main process the named import
+// fails at runtime ("Named export 'autoUpdater' not found"). The default-import +
+// destructure pattern works for both CJS and ESM consumers.
+import electronUpdater from 'electron-updater';
 import type { BrowserWindow } from 'electron';
 import type { UpdateStatus } from '@shared/types';
+
+const { autoUpdater } = electronUpdater;
 
 type GetMainWindow = () => BrowserWindow | null;
 
