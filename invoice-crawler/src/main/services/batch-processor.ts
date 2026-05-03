@@ -1,4 +1,5 @@
 import { basename } from 'path';
+import { setMaxListeners } from 'events';
 import type { BatchProgress, FirmProfile, InvoiceResult } from '@shared/types';
 import { BATCH_CONCURRENCY } from '@shared/constants';
 import { extractInvoice } from './extract-single';
@@ -27,6 +28,12 @@ export class BatchProcessor {
     this.running = true;
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
+    // Node defaults to 10 listeners per EventTarget. Each in-flight worker
+    // adds at least 2 (one inside the AI SDK's fetch, one in our retry
+    // sleep), so concurrency=3 already grazes the limit and triggers a
+    // MaxListenersExceededWarning. Raise the cap explicitly with comfortable
+    // headroom for SDK internals and any future bump in concurrency.
+    setMaxListeners(BATCH_CONCURRENCY * 4 + 10, signal);
 
     const { filePaths, profile, apiKey, onProgress } = options;
     const total = filePaths.length;
