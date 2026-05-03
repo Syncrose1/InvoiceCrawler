@@ -7,6 +7,10 @@ node_modules/
 out/
 dist/
 *.tsbuildinfo
+# There's no package.json at the repo root — only in invoice-crawler/.
+# Catch any stray `npm install` run from the wrong cwd before it ships.
+/package-lock.json
+/package.json
 
 # Editor / OS
 .DS_Store
