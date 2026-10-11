@@ -37,8 +37,8 @@ export class BatchProcessor {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
     // Node defaults to 10 listeners per EventTarget. Each in-flight worker
-    // adds at least 2 (one inside the AI SDK's fetch, one in our retry
-    // sleep), so concurrency=3 already grazes the limit and triggers a
+    // adds at least 2 (the AI SDK wires the signal into both its request and
+    // its retry backoff), so concurrency=3 already grazes the limit and triggers a
     // MaxListenersExceededWarning. Raise the cap explicitly with comfortable
     // headroom for SDK internals and any future bump in concurrency.
     setMaxListeners(BATCH_CONCURRENCY * 4 + 10, signal);
@@ -85,6 +85,13 @@ export class BatchProcessor {
           autoCrop,
           signal,
         });
+        // A request cut short by Cancel isn't a real failure — put the file
+        // back to pending so it reads as "not processed" rather than
+        // "Error: Request was aborted".
+        if (signal.aborted && result.status === 'error') {
+          results[index] = { ...results[index], status: 'pending' };
+          return;
+        }
         results[index] = result;
 
         completed += 1;

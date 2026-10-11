@@ -1,6 +1,6 @@
 {
   "name": "invoice-crawler",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "AI-powered invoice data extraction for accountancy firms — by Syncratic",
   "main": "./out/main/index.js",
   "type": "module",
@@ -16,7 +16,6 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "package": "electron-vite build && electron-builder",
     "package:win": "electron-vite build && electron-builder --win",
-    "package:mac": "electron-vite build && electron-builder --mac",
     "package:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {

@@ -1,9 +1,13 @@
 import OpenAI from 'openai';
 import type { ExtractionField } from '@shared/types';
 import type { AiProvider } from './ai-provider';
-import { buildJsonSchema, buildSystemPrompt, normaliseExtractedData } from './ai-provider';
+import {
+  SDK_MAX_RETRIES,
+  buildJsonSchema,
+  buildSystemPrompt,
+  normaliseExtractedData,
+} from './ai-provider';
 import type { EncodedImage } from './image-encoder';
-import { withRetry } from './retry';
 
 export class OpenAiProvider implements AiProvider {
   private client: OpenAI;
@@ -12,7 +16,7 @@ export class OpenAiProvider implements AiProvider {
     apiKey: string,
     private model: string,
   ) {
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, maxRetries: SDK_MAX_RETRIES });
   }
 
   async extractInvoiceData(
@@ -28,33 +32,29 @@ export class OpenAiProvider implements AiProvider {
       image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
     }));
 
-    const response = await withRetry(
-      () =>
-        this.client.chat.completions.create(
+    const response = await this.client.chat.completions.create(
+      {
+        model: this.model,
+        max_tokens: 1024,
+        messages: [
+          { role: 'system', content: systemPrompt },
           {
-            model: this.model,
-            max_tokens: 1024,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              {
-                role: 'user',
-                content: [
-                  ...imageContent,
-                  { type: 'text', text: 'Extract the requested fields from this invoice.' },
-                ],
-              },
+            role: 'user',
+            content: [
+              ...imageContent,
+              { type: 'text', text: 'Extract the requested fields from this invoice.' },
             ],
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'invoice_extraction',
-                strict: true,
-                schema,
-              },
-            },
           },
-          { signal: options?.signal },
-        ),
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'invoice_extraction',
+            strict: true,
+            schema,
+          },
+        },
+      },
       { signal: options?.signal },
     );
 

@@ -60,26 +60,9 @@ function LiveResults() {
     if (batch.phase === 'idle') navigate('/', { replace: true });
   }, [batch.phase, navigate]);
 
-  // We need the template snapshot for the live source; the batch carries the
-  // runId but not the snapshot, so we fetch the saved record once the batch
-  // completes. Until then the EmptyState shows.
-  const [template, setTemplate] = useState<ResultsSourceTemplate | null>(null);
-  useEffect(() => {
-    if (!batch.runId) return;
-    let cancelled = false;
-    void (async () => {
-      const record = await ipcInvoke('history:get', batch.runId!);
-      if (cancelled || !record) return;
-      setTemplate({
-        id: record.template.id,
-        name: record.template.name,
-        fields: record.template.fields,
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [batch.runId, batch.phase]);
+  // The run's template snapshot travels with the batch state, so results
+  // render even if saving the run to history failed.
+  const template = batch.template;
 
   if (results.length === 0 || !template) {
     return <EmptyState />;

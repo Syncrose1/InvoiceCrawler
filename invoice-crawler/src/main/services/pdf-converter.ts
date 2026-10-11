@@ -16,6 +16,13 @@ const PDF_RENDER_SCALE = 2.0;
  */
 const MAX_CANVAS_PIXELS = 100_000_000;
 
+/**
+ * Most pages we'll render for one file. The vision APIs cap images per
+ * request (Anthropic: 100), and anything this long is a statement or a merged
+ * scan rather than one invoice — fail fast before rendering it all.
+ */
+const MAX_PDF_PAGES = 50;
+
 /** pdfjs `VerbosityLevel.ERRORS` — keep its chatter out of our logs. */
 const VERBOSITY_ERRORS = 0;
 
@@ -115,6 +122,12 @@ export async function convertPdfToImages(pdfPath: string): Promise<EncodedImage[
   }).promise;
 
   try {
+    if (pdfDocument.numPages > MAX_PDF_PAGES) {
+      throw new Error(
+        `PDF has ${pdfDocument.numPages} pages; the limit is ${MAX_PDF_PAGES}. ` +
+          'Split it into individual invoices and try again.',
+      );
+    }
     const images: EncodedImage[] = [];
     for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
       images.push(await renderPage(pdfDocument, pageNumber));

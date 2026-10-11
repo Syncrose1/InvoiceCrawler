@@ -1,9 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { ExtractionField } from '@shared/types';
 import type { AiProvider } from './ai-provider';
-import { buildJsonSchema, buildSystemPrompt, normaliseExtractedData } from './ai-provider';
+import {
+  SDK_MAX_RETRIES,
+  buildJsonSchema,
+  buildSystemPrompt,
+  normaliseExtractedData,
+} from './ai-provider';
 import type { EncodedImage } from './image-encoder';
-import { withRetry } from './retry';
 
 export class AnthropicProvider implements AiProvider {
   private client: Anthropic;
@@ -12,7 +16,7 @@ export class AnthropicProvider implements AiProvider {
     apiKey: string,
     private model: string,
   ) {
-    this.client = new Anthropic({ apiKey });
+    this.client = new Anthropic({ apiKey, maxRetries: SDK_MAX_RETRIES });
   }
 
   async extractInvoiceData(
@@ -32,28 +36,24 @@ export class AnthropicProvider implements AiProvider {
       },
     }));
 
-    const response = await withRetry(
-      () =>
-        this.client.messages.create(
+    const response = await this.client.messages.create(
+      {
+        model: this.model,
+        max_tokens: 1024,
+        system: systemPrompt,
+        output_config: {
+          format: { type: 'json_schema', schema: schema as { [key: string]: unknown } },
+        },
+        messages: [
           {
-            model: this.model,
-            max_tokens: 1024,
-            system: systemPrompt,
-            output_config: {
-              format: { type: 'json_schema', schema: schema as { [key: string]: unknown } },
-            },
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  ...imageBlocks,
-                  { type: 'text', text: 'Extract the requested fields from this invoice.' },
-                ],
-              },
+            role: 'user',
+            content: [
+              ...imageBlocks,
+              { type: 'text', text: 'Extract the requested fields from this invoice.' },
             ],
           },
-          { signal: options?.signal },
-        ),
+        ],
+      },
       { signal: options?.signal },
     );
 

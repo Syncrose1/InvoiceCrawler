@@ -28,16 +28,15 @@ extraResources:
     to: pdfjs/cmaps
   - from: node_modules/pdfjs-dist/standard_fonts
     to: pdfjs/standard_fonts
+  # Window icon for resolveIcon() in src/main/index.ts. build/ is the
+  # buildResources dir, so electron-builder doesn't package it on its own.
+  - from: build/icon.png
+    to: build/icon.png
 win:
   icon: build/icon.ico
   target:
     - target: nsis
       arch: [x64]
-mac:
-  icon: build/icon.png
-  target:
-    - target: dmg
-      arch: [x64, arm64]
 linux:
   icon: build/icon.png
   target:
@@ -52,9 +51,9 @@ publish:
   provider: github
   owner: Syncrose1
   repo: InvoiceCrawler
-  # The release workflow builds across three OSes in parallel. Using `draft`
+  # The release workflow builds Linux and Windows in parallel. Using `draft`
   # means the first runner creates the draft, the others append to it safely,
   # and a final `publish` job promotes the draft to a real release once all
-  # three OSes have uploaded successfully — no half-published releases if one
+  # both OSes have uploaded successfully — no half-published releases if one
   # platform fails.
   releaseType: draft

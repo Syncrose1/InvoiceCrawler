@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
 
     defaults:
       run:
@@ -59,8 +59,6 @@ jobs:
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
             npm run package:linux -- --publish always
-          elif [ "${{ runner.os }}" = "macOS" ]; then
-            npm run package:mac -- --publish always
           else
             npm run package:win -- --publish always
           fi
@@ -74,7 +72,7 @@ jobs:
 
     steps:
       # The build matrix uploads artefacts to a draft release named after the tag.
-      # This step flips the draft to a published release once all three OSes succeed.
+      # This step flips the draft to a published release once both OSes succeed.
       - name: Promote draft to published release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

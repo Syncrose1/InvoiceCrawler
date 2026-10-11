@@ -4,6 +4,7 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import type { FieldTemplate } from '@shared/types';
 import { DEFAULT_FIELDS } from '@shared/constants';
+import { readJson, writeJsonAtomic } from './json-file';
 
 const TEMPLATES_DIR = 'templates';
 
@@ -17,16 +18,6 @@ function pathFor(id: string): string {
 
 async function ensureDir(): Promise<void> {
   await fs.mkdir(dir(), { recursive: true });
-}
-
-async function readJson<T>(filePath: string): Promise<T | null> {
-  try {
-    const raw = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(raw) as T;
-  } catch {
-    // Skip corrupt files rather than crashing the page.
-    return null;
-  }
 }
 
 export async function listTemplates(): Promise<FieldTemplate[]> {
@@ -52,7 +43,7 @@ export async function saveTemplate(template: FieldTemplate): Promise<FieldTempla
     createdAt: template.createdAt || now,
     updatedAt: now,
   };
-  await fs.writeFile(pathFor(final.id), JSON.stringify(final, null, 2), 'utf-8');
+  await writeJsonAtomic(pathFor(final.id), final);
   return final;
 }
 

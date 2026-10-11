@@ -17,6 +17,8 @@ export interface BatchState {
   results: InvoiceResult[] | null;
   error: string | null;
   runId: string | null;
+  /** Snapshot of the template this run uses, so results render without a history round-trip. */
+  template: RunRecord['template'] | null;
 }
 
 interface RunContext {
@@ -34,6 +36,7 @@ const initialState: BatchState = {
   results: null,
   error: null,
   runId: null,
+  template: null,
 };
 
 // Module-scope state so progress survives page navigation between
@@ -83,24 +86,29 @@ let listenersWired = false;
 function wireListenersOnce(): void {
   if (listenersWired) return;
   listenersWired = true;
+  // Progress and completion only apply while a run is live. After Cancel the
+  // main process still unwinds in-flight requests and sends a final
+  // progress + complete pair; without this guard those flipped the UI back
+  // to "running" and then saved the cancelled run as "complete".
   window.api.on('batch:progress', (progress) => {
+    if (state.phase !== 'running') return;
     set({
-      phase: 'running',
+      ...state,
       progress,
       results: null,
       error: null,
-      runId: context?.runId ?? null,
     });
   });
   window.api.on('batch:complete', (results) => {
+    if (state.phase !== 'running') return;
     set({
+      ...state,
       phase: 'complete',
       progress: state.progress
         ? { ...state.progress, completed: results.length, results }
         : null,
       results,
       error: null,
-      runId: context?.runId ?? null,
     });
     void persistRun(results, 'complete');
   });
@@ -153,13 +161,18 @@ export async function startBatch(opts: StartBatchOptions): Promise<void> {
     results: null,
     error: null,
     runId: context.runId,
+    template: context.templateSnapshot,
   });
   await ipcInvoke('batch:start', opts.filePaths, opts.template.id);
 }
 
 export async function cancelBatch(): Promise<void> {
-  await ipcInvoke('batch:cancel');
-  const results = state.progress?.results ?? null;
+  // Files that were mid-request when Cancel landed never finished — show
+  // and save them as not processed rather than stuck "processing".
+  const results =
+    state.progress?.results.map((r) =>
+      r.status === 'processing' ? { ...r, status: 'pending' as const } : r,
+    ) ?? null;
   set({
     ...state,
     phase: 'cancelled',
@@ -169,6 +182,9 @@ export async function cancelBatch(): Promise<void> {
   if (results && results.some((r) => r.status === 'success' || r.status === 'error')) {
     void persistRun(results, 'cancelled');
   }
+  // Flip the phase before telling main, so a final progress/complete event
+  // that races the IPC reply is already ignored.
+  await ipcInvoke('batch:cancel');
 }
 
 export function resetBatch(): void {

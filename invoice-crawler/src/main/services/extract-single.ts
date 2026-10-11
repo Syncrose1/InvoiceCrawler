@@ -5,7 +5,15 @@ import { encodeImageFile } from './image-encoder';
 import { convertPdfToImages } from './pdf-converter';
 import { createAiProvider } from './ai-provider';
 import { cropToContent } from './image-cropper';
+import { fitForVision } from './image-fitter';
 import type { EncodedImage } from './image-encoder';
+
+/**
+ * Ceiling on the combined base64 payload for one invoice. Anthropic caps a
+ * whole request at 32MB, so stop short with a clear message instead of a
+ * 413 from the API.
+ */
+const MAX_REQUEST_BASE64_BYTES = 24_000_000;
 
 export interface ExtractInvoiceOptions {
   filePath: string;
@@ -31,6 +39,14 @@ export async function extractInvoice(opts: ExtractInvoiceOptions): Promise<Invoi
     let images = await loadImages(filePath);
     if (autoCrop) {
       images = await Promise.all(images.map((img) => cropToContent(img)));
+    }
+    images = await Promise.all(images.map((img) => fitForVision(img)));
+    const payloadBytes = images.reduce((sum, img) => sum + img.base64.length, 0);
+    if (payloadBytes > MAX_REQUEST_BASE64_BYTES) {
+      throw new Error(
+        `This file's ${images.length} page(s) are too large to send in one request. ` +
+          'Try splitting it into smaller files.',
+      );
     }
     const aiProvider = createAiProvider(provider, apiKey, model);
     const data = await aiProvider.extractInvoiceData(images, template.fields, { signal });

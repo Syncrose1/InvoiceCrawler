@@ -4,6 +4,13 @@ import type { EncodedImage } from './image-encoder';
 import { AnthropicProvider } from './ai-anthropic';
 import { OpenAiProvider } from './ai-openai';
 
+/**
+ * Retries the SDKs make on 408/409/429/5xx and dropped connections. They back
+ * off using the server's `retry-after` and stop as soon as the batch's abort
+ * signal fires, so we don't layer a retry loop of our own on top.
+ */
+export const SDK_MAX_RETRIES = 4;
+
 export interface AiProvider {
   extractInvoiceData(
     images: EncodedImage[],

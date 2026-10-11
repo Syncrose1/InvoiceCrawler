@@ -2,6 +2,7 @@ import { app } from 'electron';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import type { AiProviderName, ExtractionField, RunRecord, RunSummary } from '@shared/types';
+import { readJson, writeJsonAtomic } from './json-file';
 
 const HISTORY_DIR = 'history';
 
@@ -15,15 +16,6 @@ function pathFor(id: string): string {
 
 async function ensureDir(): Promise<void> {
   await fs.mkdir(dir(), { recursive: true });
-}
-
-async function readJson<T>(filePath: string): Promise<T | null> {
-  try {
-    const raw = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -130,7 +122,7 @@ export async function saveRun(record: RunRecord): Promise<RunRecord> {
     ...record,
     updatedAt: new Date().toISOString(),
   };
-  await fs.writeFile(pathFor(finalRecord.id), JSON.stringify(finalRecord, null, 2), 'utf-8');
+  await writeJsonAtomic(pathFor(finalRecord.id), finalRecord);
   return finalRecord;
 }
 

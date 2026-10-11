@@ -4,6 +4,7 @@ import { join } from 'path';
 import type { AppSettings, FieldTemplate } from '@shared/types';
 import { PROVIDER_MODELS } from '@shared/constants';
 import { saveTemplate } from './templates-store';
+import { writeJsonAtomic } from './json-file';
 
 const SETTINGS_FILENAME = 'app-settings.json';
 const LEGACY_PROFILES_DIR = 'profiles';
@@ -26,19 +27,29 @@ function profilesDir(): string {
 }
 
 export async function loadSettings(): Promise<AppSettings> {
+  let raw: string;
   try {
-    const raw = await fs.readFile(settingsPath(), 'utf-8');
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<AppSettings>) };
+    raw = await fs.readFile(settingsPath(), 'utf-8');
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { ...DEFAULTS };
     throw error;
+  }
+  try {
+    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<AppSettings>) };
+  } catch (error) {
+    // A corrupt settings file would otherwise break every batch and the
+    // Settings page until someone deleted it by hand. Set it aside (so it's
+    // recoverable) and carry on with defaults — the user re-enters their key.
+    console.error('Settings file is corrupt, falling back to defaults:', error);
+    await fs.rename(settingsPath(), `${settingsPath()}.corrupt-${Date.now()}`).catch(() => {});
+    return { ...DEFAULTS };
   }
 }
 
 export async function saveSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
   const current = await loadSettings();
   const merged: AppSettings = { ...current, ...patch };
-  await fs.writeFile(settingsPath(), JSON.stringify(merged, null, 2), 'utf-8');
+  await writeJsonAtomic(settingsPath(), merged);
   return merged;
 }
 
@@ -54,8 +65,12 @@ export function decryptApiKey(encoded: string): string {
   try {
     return safeStorage.decryptString(Buffer.from(encoded, 'base64'));
   } catch {
-    // Treat as plain text if decryption fails (e.g., during migration).
-    return encoded;
+    // A key saved before encryption was available is stored as plain text —
+    // both providers' keys start with `sk-`. Anything else is ciphertext we
+    // can no longer read (OS keyring changed or locked, common on Linux).
+    // Report it as missing so the UI asks for the key again, rather than
+    // sending ciphertext to the API and surfacing a baffling auth error.
+    return encoded.startsWith('sk-') ? encoded : '';
   }
 }
 

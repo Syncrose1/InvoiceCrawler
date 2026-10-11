@@ -7,7 +7,8 @@ import { migrateProfilesToTemplates } from './services/settings-store';
 let mainWindow: BrowserWindow | null = null;
 
 // Resolve the icon both in dev (project root) and in the packaged app
-// (bundled under resources/build/icon.png by electron-builder).
+// (copied to resources/build/icon.png via extraResources in electron-builder.yml).
+// Windows takes its taskbar icon from the .exe, so this mostly matters on Linux.
 function resolveIcon(): Electron.NativeImage {
   const candidates = [
     join(__dirname, '../../build/icon.png'),
@@ -31,7 +32,6 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#0a0a0f',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     icon: icon.isEmpty() ? undefined : icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
@@ -46,7 +46,9 @@ function createWindow(): void {
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    // Only hand web links to the OS. Anything else (file:, custom schemes)
+    // could launch a local program.
+    if (/^https?:\/\//i.test(details.url)) void shell.openExternal(details.url);
     return { action: 'deny' };
   });
 
@@ -69,12 +71,8 @@ app.whenReady().then(async () => {
   registerIpcHandlers(() => mainWindow);
   createWindow();
   initAutoUpdater(() => mainWindow);
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  app.quit();
 });
